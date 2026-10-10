@@ -1,10 +1,10 @@
 import { chromium } from 'playwright'; import http from 'http'; import fs from 'fs'; import path from 'path';
 const srv = http.createServer((q, s) => { const p = path.join(process.cwd(), decodeURIComponent(q.url.split('?')[0])); fs.readFile(p, (e, d) => { if (e) { s.writeHead(404); s.end(); } else { s.writeHead(200, {'content-type': p.endsWith('.html')?'text/html':p.endsWith('.js')?'text/javascript':p.endsWith('.css')?'text/css':'application/octet-stream'}); s.end(d); } }); }).listen(0);
 const b = await chromium.launch(); const pg = await b.newPage();
-await pg.goto(`http://localhost:${srv.address().port}/index.html?static=1&s=0.6667`); await pg.evaluate(() => KAL.ready);
-const url = await pg.evaluate(() => { const x = KAL.canvas.getContext('2d'); x.setTransform(.6667,0,0,.6667,0,0); C.use(x); x.fillStyle = C.PALETTE.wall; x.fillRect(0,0,1920,1080);
+await pg.goto(`http://localhost:${srv.address().port}/index.html?static=1&s=0.6667`); await pg.evaluate(() => AGAMOTO.ready);
+const url = await pg.evaluate(() => { const x = AGAMOTO.canvas.getContext('2d'); x.setTransform(.6667,0,0,.6667,0,0); C.use(x); x.fillStyle = C.PALETTE.wall; x.fillRect(0,0,1920,1080);
   ['sit','stand','point-at-board','lean-in-to-group'].forEach((p,i)=>C.figure(250+i*350, 600, 260, p, i==1?C.SUNANDA:C.outfitFor(i), false, 1));
   C.caption('Monday morning, 2036. Every *desk* is taken.', [], 1, 800); C.stamp('≈ 3,037 students · 6 of 10 futures', 960, 950, 1);
   C.ring(1500, 300, 120, 80, 1); C.callout('AI explains · mentors guide', 1300, 150, 1450, 260, 1); C.headline(2028, 'A free AI tutor app goes viral', 500, 160, 1, '-', 3);
-  return KAL.canvas.toDataURL('image/jpeg', .85); });
+  return AGAMOTO.canvas.toDataURL('image/jpeg', .85); });
 fs.writeFileSync('qc/kit.jpg', Buffer.from(url.split(',')[1], 'base64')); await b.close(); srv.close();

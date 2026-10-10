@@ -1,4 +1,4 @@
-// Kal · Vidya Classes — clip renderer.
+// Eye of Eye of Agamoto · Vidya Classes — clip renderer.
 //   node render.mjs                    render every clip into clips/<id>.mp4 (priority order, 3 pages in parallel)
 //   node render.mjs wait-1 c1-ban      render only these ids (also 'rewind-<road>', 'wait-2-<c1>')
 //   node render.mjs --walkthrough      concatenate the demo path into walkthrough.mp4
@@ -51,8 +51,8 @@ async function renderOne(browser, port, id) {
   const errs = []; page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   try {
     await page.goto(`http://localhost:${port}/index.html?clip=${sp.clip}&road=${sp.road}&s=0.6667&static=1`);
-    await page.evaluate(() => KAL.ready);
-    const dur = await page.evaluate(c => KAL.dur(c), sp.clip), n = Math.round(dur * FPS);
+    await page.evaluate(() => AGAMOTO.ready);
+    const dur = await page.evaluate(c => AGAMOTO.dur(c), sp.clip), n = Math.round(dur * FPS);
     fs.mkdirSync(CLIPS, { recursive: true });
     const tmp = path.join(CLIPS, `.${sp.outs[0]}.tmp.mp4`);
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
@@ -60,7 +60,7 @@ async function renderOne(browser, port, id) {
     const done = new Promise((res, rej) => { ff.on('close', c => c === 0 ? res() : rej(new Error('ffmpeg exit ' + c))); ff.on('error', rej); });
     ff.stdin.on('error', () => {});
     for (let i = 0; i < n; i++) {
-      const url = await page.evaluate(([c, t, r]) => { KAL.frame(c, t, r); return KAL.canvas.toDataURL('image/jpeg', .85); }, [sp.clip, i / FPS, sp.road]);
+      const url = await page.evaluate(([c, t, r]) => { AGAMOTO.frame(c, t, r); return AGAMOTO.canvas.toDataURL('image/jpeg', .85); }, [sp.clip, i / FPS, sp.road]);
       const buf = Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
       if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
     }
@@ -88,7 +88,7 @@ function walkthrough() {
   const seq = ['prologue', 'wait-1', 'c1-build', 'wait-2', 'c2-build-retrain', 'end-build-retrain', 'rewind-build-retrain', 'c1-ban', 'c2-ban-retrain', 'end-ban-retrain'];
   const have = seq.filter(id => { const ok = fs.existsSync(path.join(CLIPS, id + '.mp4')); if (!ok) console.log('skip (missing): ' + id); return ok; });
   if (!have.length) { console.log('no clips to concatenate'); process.exitCode = 1; return; }
-  const list = path.join(os.tmpdir(), `kal-concat-${process.pid}.txt`);
+  const list = path.join(os.tmpdir(), `agamoto-concat-${process.pid}.txt`);
   fs.writeFileSync(list, have.map(id => `file '${path.join(CLIPS, id + '.mp4')}'`).join('\n') + '\n');
   const r = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c:v', 'libx264', '-crf', '24', '-pix_fmt', 'yuv420p',
     '-movflags', '+faststart', '-r', String(FPS), '-an', path.join(ROOT, 'walkthrough.mp4')], { stdio: 'inherit' });

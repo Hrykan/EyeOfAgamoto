@@ -33,11 +33,17 @@
   })();
   var TPOS = [];
   (function () {
-    for (var tier = 0; tier < 3; tier++) for (var k = 0; k < 17; k++) {
-      var x = 250 + k * 80 + (tier % 2) * 40; if (Math.abs(x - 960) < 75) continue;
-      TPOS.push({ x: x, y: 552 + tier * 22, h: 150 + tier * 8, tier: tier, p: Math.abs(x - 930) + tier * 110 });
+    // 4 lecturers at the main board, the rest spread through the aisles between desk rows (each pointing at a desk)
+    [735, 850, 1075, 1190].forEach(function (x, i) { TPOS.push({ x: x, y: 556, h: 165, tier: 0, p: i, aisle: -1 }); });
+    var AY = [628, 700, 774, 850], cand = [[], [], [], []];
+    for (var a = 0; a < 4; a++) { var base = 95 + ((a + 1) % 2) * 65; for (var ci = 0; ci < 14; ci++) { var x = base + ci * 130 + 65; if (Math.abs(x - 960) < 90 || x < 70 || x > 1850) continue; cand[a].push(x); } }
+    var used = [[], [], [], []];
+    for (var k = 0; k < 44; k++) {
+      var aa = k % 4, u = (k * 0.6180339887 + 0.13) % 1, tx = 110 + u * 1700, best = null, bd = 1e9;
+      cand[aa].forEach(function (cx) { if (used[aa].some(function (ux) { return Math.abs(ux - cx) < 120; })) return; var d = Math.abs(cx - tx); if (d < bd) { bd = d; best = cx; } });
+      if (best == null) continue; used[aa].push(best);
+      TPOS.push({ x: best, y: AY[aa], h: 150 + (AY[aa] - 556) * 0.12, tier: 1 + aa, p: 10 + k, aisle: aa });
     }
-    TPOS.sort(function (a, b) { return a.p - b.p; });
   })();
   var STRUG = []; (function () { var r = C.rand(404); for (var i = 0; i < 90; i++) STRUG.push(r() < 0.13); })();
   var L = SET.layout = {
@@ -51,7 +57,7 @@
 
   /* ---------- config ---------- */
   SET.config = function (road, yf) {
-    var v = Kal.at(road, yf);
+    var v = Agamoto.at(road, yf);
     return {
       year: yf, students: v.students, teachers: v.teachers, fees: v.fees, results: v.results,
       seated: Math.round(v.students / 50), teacherFigs: Math.round(v.teachers / 4),
@@ -215,7 +221,7 @@
 
   /* ---------- choice cards ---------- */
   function cardLabel(slot, kind) {
-    var d = Kal.company().decisions[slot], o = d.options.filter(function (q) { return q.id === kind; })[0];
+    var d = Agamoto.company().decisions[slot], o = d.options.filter(function (q) { return q.id === kind; })[0];
     return o ? o.label : kind;
   }
   function drawCard(c, slot, kind, age) {
@@ -270,7 +276,7 @@
       var tp = TPOS[i], a = CL(F - i), ov = cfg.teachFn ? cfg.teachFn(i, tp, t) : null;
       if (ov && ov.a != null) a = ov.a;
       if (a < 0.003) return;
-      var x = tp.x, y = tp.y, h = tp.h, pose = (i < 4) ? 'point-at-board' : 'stand', flip = tp.x > 960;
+      var x = tp.x, y = tp.y, h = tp.h, pose = 'point-at-board', flip = tp.aisle < 0 ? tp.x > 960 : (i % 2 === 0);
       if (mentA > 0 && occ.length) {
         var s = occ[Math.min(occ.length - 1, Math.floor((i + 0.5) * occ.length / Math.max(1, Fc)))], e = C.ease(mentA);
         x = lerp(tp.x, s.x + 60, e); y = lerp(tp.y, s.y + 6, e); h = lerp(tp.h, s.h * 0.98, e); flip = e > 0.5 ? true : flip;
@@ -355,7 +361,7 @@
     C.withCam(cam, function () {
       SET.draw(ctx, cfg, t, dur);
       var sg = SET.struggling(nS).slice(0, 3), rp = C.prog(t, 7.2, 8.4);
-      sg.forEach(function (i, k) { var p = SET.dotPos(i); C.ring(p.x, p.y, 18, 17, CL(rp * 1.5 - k * 0.2), P.coral, 4); });
+      sg.forEach(function (i, k) { var p = SET.dotPos(i); ctx.save(); ctx.globalAlpha *= fade(t, 7.2, 11.8, 0.1, 0.5); C.ring(p.x, p.y, 18, 17, CL(rp * 1.5 - k * 0.2), P.coral, 4); ctx.restore(); });
       if (sg.length && t > 7.8 && t < 11.8) { var p0 = SET.dotPos(sg[0]); ctx.save(); ctx.globalAlpha *= fade(t, 7.8, 11.8, 0.3, 0.5); C.callout('Teacher sees who struggles', 1050, 505, p0.x, p0.y + 14, C.prog(t, 7.8, 8.8), { size: 28, bg: P.mustard }); ctx.restore(); }
     });
     cap(ctx, 'Every student gets an AI tutor, in every class.', [], t, 1.0, 4.6);
@@ -363,7 +369,7 @@
     cap(ctx, '2027. The room hums.', [], t, 11.3, 13.4);
   } };
   CLIPS['c1-ban'] = { dur: 15, draw: function (ctx, t, road) {
-    C.use(ctx); var dur = 15, cfg = SET.config(road, c1Year(t)), v1 = Kal.at(road, 2027), v0 = Kal.at(road, 2026);
+    C.use(ctx); var dur = 15, cfg = SET.config(road, c1Year(t)), v1 = Agamoto.at(road, 2027), v0 = Agamoto.at(road, 2026);
     cfg.cards = ['ban']; cfg.cardAge = [t - 0.6]; cfg.ban = true;
     cfg.students = lerp(v0.students, v1.students, C.ease(C.prog(t, 7, 10)));
     cfg.banAmt = C.prog(t, 5.6, 6.3);
@@ -381,10 +387,17 @@
         // leavers
         for (var q = 0; q < 3; q++) (function (q) {
           var rank = nS0 - 1 - q; if (rank < 0) return; var s = SLOTS[ORDER[rank]], w0 = 7.4 + q * 0.5, f = (t - w0) / 3;
-          if (f > 0 && f < 1) items.push({ y: s.y + 1, fn: function () { var e = C.ease(f), x = lerp(s.x, 2050, e), y = lerp(s.y + 26 * s.h / 100, s.y + 60, e); fig(x, y, s.h * 1.05, 'stand', C.outfitFor(s.i), false, q, 1 - C.prog(f, 0.75, 1), t, dur); } });
+          if (f > 0 && f < 1) items.push({ y: s.y + 1, fn: function () { var e = C.ease(f), x = lerp(s.x, 2050, e), y = lerp(s.y + 26 * s.h / 100, s.y + 60, e); fig(x, y, s.h * 1.05, 'stand', C.outfitFor(s.i), false, q, CL(v0.students / 50 - rank) * (1 - C.prog(f, 0.75, 1)), t, dur); } });
         })(q);
       };
-      cfg.seatFn = function (si, rank, s) { var N = cfg.students / 50; if (rank >= nS1 && rank < nS0) { var q = nS0 - 1 - rank; var w0 = 7.4 + q * 0.5; if (q < 3) return t < w0 ? { a: 1, x: s.x, y: s.y, pose: 'sit', flip: s.i % 3 === 0 } : { a: 0 }; } return null; };
+      cfg.seatFn = function (si, rank, s) {
+        if (rank >= nS1 && rank < nS0 && nS0 - 1 - rank < 3) {
+          var q = nS0 - 1 - rank, w0 = 7.4 + q * 0.5, a0 = CL(v0.students / 50 - rank), a1 = CL(v1.students / 50 - rank);
+          if (t < w0) return { a: a0, x: s.x, y: s.y, pose: 'sit', flip: s.i % 3 === 0 };
+          return { a: a1 * C.prog(t, w0 + 3, w0 + 4), x: s.x, y: s.y, pose: 'sit', flip: s.i % 3 === 0 };
+        }
+        return null;
+      };
       SET.draw(ctx, cfg, t, dur);
       var sp = C.prog(t, 5.4, 6.2); if (sp > 0 && t < 7.4) { ctx.save(); ctx.globalAlpha *= fade(t, 5.4, 7.4, 0.1, 0.5); C.stamp('No AI', 1115, 520, sp, { size: 70, rot: -5 }); ctx.restore(); }
     });
@@ -412,10 +425,10 @@
       var camKeys = cutRoad
         ? [{ t: 0, x: 960, y: 540, z: 1 }, { t: 2, x: 960, y: 540, z: 1 }, { t: 3.5, x: 900, y: 560, z: 1.2 }, { t: 7.5, x: 900, y: 560, z: 1.2 }, { t: 10, x: 960, y: 540, z: 1 }]
         : [{ t: 0, x: 960, y: 540, z: 1 }, { t: 2.5, x: 960, y: 540, z: 1 }, { t: 4, x: 960, y: 740, z: 1.3 }, { t: 9, x: 960, y: 740, z: 1.3 }, { t: 12, x: 960, y: 540, z: 1 }];
-      var v0 = Kal.at(road, 2027), v1 = Kal.at(road, 2030), F0 = Math.min(TPOS.length, v0.teachers / 4), F1 = Math.min(TPOS.length, v1.teachers / 4);
+      var v0 = Agamoto.at(road, 2027), v1 = Agamoto.at(road, 2030), F0 = Math.min(TPOS.length, v0.teachers / 4), F1 = Math.min(TPOS.length, v1.teachers / 4);
       var nLeave = cutRoad ? Math.min(6, Math.max(0, Math.ceil(F0 - 0.001) - Math.floor(F1 + 0.001))) : 0, firstLeave = Math.ceil(F0 - 0.001) - nLeave;
       if (cutRoad) {
-        cfg.teachFn = function (i) { if (i >= firstLeave && i < firstLeave + nLeave) return { a: t < 2.6 + (i - firstLeave) * 0.6 ? 1 : 0 }; return null; };
+        cfg.teachFn = function (i) { if (i >= firstLeave && i < firstLeave + nLeave) return { a: t < 2.6 + (i - firstLeave) * 0.6 ? CL(F0 - i) : 0 }; return null; };
       } else { cfg.mentAmt = C.prog(t, 2.8, 6.6); }
       C.withCam(C.track(t, camKeys), function () {
         cfg.extra = function (items) {
@@ -423,14 +436,14 @@
             var tp = TPOS[firstLeave + q], w0 = 2.6 + q * 0.6, f = (t - w0) / 3.2; if (f <= 0 || f >= 1) return;
             items.push({ y: tp.y + 1, fn: function () {
               var dir = tp.x < 960 ? -1 : 1, e = C.ease(f), x = lerp(tp.x, dir < 0 ? -100 : 2020, e), y = lerp(tp.y, tp.y + 90, e), o = C.outfitFor(firstLeave + q + 3);
-              fig(x, y, tp.h, 'stand', o, dir < 0, q, 1 - C.prog(f, 0.85, 1), t, dur); drawBox(ctx, x + dir * 8, y - tp.h * 0.4, 34);
+              fig(x, y, tp.h, 'stand', o, dir < 0, q, CL(F0 - firstLeave - q) * (1 - C.prog(f, 0.85, 1)), t, dur); drawBox(ctx, x + dir * 8, y - tp.h * 0.4, 34);
             } });
           })(q);
         };
         SET.draw(ctx, cfg, t, dur);
         if (cutRoad) {
           var tp = C.prog(t, 3, 4.2), fo = fade(t, 3, 12.6, 0.4, 0.6);
-          if (tp > 0 && fo > 0) { var fee = Kal.at(road, year).fees, ty = lerp(120, 205, C.back(tp)); ctx.save(); ctx.globalAlpha *= fo; ctx.strokeStyle = P.inkSoft; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1350, 0); ctx.lineTo(1350, ty - 30); ctx.stroke();
+          if (tp > 0 && fo > 0) { var fee = Agamoto.at(road, year).fees, ty = lerp(120, 205, C.back(tp)); ctx.save(); ctx.globalAlpha *= fo; ctx.strokeStyle = P.inkSoft; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1350, 0); ctx.lineTo(1350, ty - 30); ctx.stroke();
             ctx.translate(1350, ty); ctx.rotate(0.05 * C.amb(t, dur, 1)); C.paper(C.torn(-52, -30, 104, 70, 71, 2), P.mustard, { lift: 5 }); C.label('Fees ↓', 0, -12, 20, P.ink, 'center', 700); C.label('₹' + (Math.round(fee / 500) * 500).toLocaleString('en-IN'), 0, 14, 28, P.ink, 'center', 800); ctx.restore(); }
         } else {
           var mp = C.prog(t, 5.5, 6.6); if (mp > 0 && t < 10.5) { ctx.save(); ctx.globalAlpha *= fade(t, 5.5, 10.5, 0.3, 0.5); C.callout('Mentors · small groups', 1000, 500, 1000, 700, mp, { size: 30, bg: P.mustard }); ctx.restore(); }

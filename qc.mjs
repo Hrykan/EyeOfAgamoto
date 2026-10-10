@@ -7,9 +7,9 @@ const srv = http.createServer((q, s) => { const p = path.join(process.cwd(), dec
 const port = srv.address().port;
 const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; pg.on('pageerror', e => errs.push(e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-await pg.goto(`http://localhost:${port}/index.html?clip=${id}&road=${road}&s=0.6667&static=1`); await pg.evaluate(() => KAL.ready);
+await pg.goto(`http://localhost:${port}/index.html?clip=${id}&road=${road}&s=0.6667&static=1`); await pg.evaluate(() => AGAMOTO.ready);
 for (const t of ts) {
-  const url = await pg.evaluate(([id, t, road]) => { KAL.frame(id, +t, road); return KAL.canvas.toDataURL('image/jpeg', .85); }, [id, t, road]);
+  const url = await pg.evaluate(([id, t, road]) => { AGAMOTO.frame(id, +t, road); return AGAMOTO.canvas.toDataURL('image/jpeg', .85); }, [id, t, road]);
   const f = `qc/${id}${road !== 'build-retrain' ? '@' + road : ''}-${t}.jpg`; fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log(f);
 }
 if (errs.length) console.log('ERRORS:', errs.join('\n'));

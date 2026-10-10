@@ -1,4 +1,4 @@
-# Kal · Vidya Classes — CONTRACT
+# Agamoto · Vidya Classes — CONTRACT
 
 Read this, `collage.js`, `engine.js`, `company.json`. Never edit a file you don't own. If the contract needs to change, report back to the lead.
 
@@ -34,13 +34,13 @@ Each module registers clips:
 CLIPS[id] = { dur: 15, draw(ctx, t, road) { ... } };   // global var CLIPS = window.CLIPS || {}
 ```
 - `draw` is a **pure function of (t, road)**: no Date, no Math.random (use `C.rand(seed)`), no state carried between frames. t ∈ [0, dur].
-- `road` = `Kal.road(roadId)` → `{ id, c1, c2, counters: {2026..2036: {students, teachers, results, fees}}, litFuture, lit, luck: [{id, year, sign, headline, hit}], ending, endingInfo, endings: {trusted, lean, empty, smaller → count of 10}, stamp }`. Use `Kal.at(road, yearFloat)` for interpolated counters. Counters for ≤2027 depend only on c1, so both roads sharing a first choice meet on the same frame.
+- `road` = `Agamoto.road(roadId)` → `{ id, c1, c2, counters: {2026..2036: {students, teachers, results, fees}}, litFuture, lit, luck: [{id, year, sign, headline, hit}], ending, endingInfo, endings: {trusted, lean, empty, smaller → count of 10}, stamp }`. Use `Agamoto.at(road, yearFloat)` for interpolated counters. Counters for ≤2027 depend only on c1, so both roads sharing a first choice meet on the same frame.
 - For prologue/wait-1 any road is passed (use only 2026). For c1-* and wait-2 the road is `<c1>-retrain`; use only years ≤ 2027.
 - Draw in world space 1920×1080. Begin with `C.use(ctx)`. Use `C.track(t, keys)` + `C.withCam(cam, fn)` for camera. Two keys at the same t = a hard cut.
 - **Never** call `ctx.setTransform`/`resetTransform`/`ctx.canvas.width` (the renderer pre-scales the context). Use save/restore. Leave `globalAlpha`, `filter`, composite op as you found them.
 - **Do not** draw grain, vignette, the HUD counters or the trust line — index.html draws those on top of every frame.
 - Ambient motion must be seamless at joins: use `C.amb(t, dur, phase)` (same value at t=0 and t=dur). Nothing is ever frozen: something always moves.
-- Captions: `C.caption(text, emph, p, y)`, narration in Instrument Serif italic; labels via `C.label` (Barlow Condensed, UPPERCASE). कल uses `C.FONTS.deva`.
+- Captions: `C.caption(text, emph, p, y)`, narration in Instrument Serif italic; labels via `C.label` (Barlow Condensed, UPPERCASE).
 
 ### Join rule
 The frame at `t = dur` of a clip equals the frame at `t = 0` of the next one (pixel-identical apart from grain). Each module exports
@@ -67,11 +67,11 @@ SET.layout                   // { window:{x,y,w,h}, board:{x,y,w,h}, screen:{x,y
 Regions at REST (so other modules can aim callouts): window with Pune skyline x 60–600, y 110–520; blackboard x 660–1300, y 140–470; notice board x 1400–1840, y 140–470; desks/floor y 540–1040. One seated student per 50 students, one teacher figure per 4 teachers; mentors sit with small groups (`lean-in-to-group`), lecturers stand at a board (`point-at-board`); the AI "struggle map" on a screen when `ai`; skyline light changes with the year.
 
 ## HUD (index.html draws it)
-Bottom-left counters `STUDENTS · TEACHERS · FEES · RESULTS` from `Kal.at(road, year(t))`, coloured by direction vs 2026 (`C.dirColor`); bottom trust line "10 futures · same luck · a fictional company · a rehearsal, not a prediction"; top-left कल · VIDYA CLASSES. Keep the bottom 110 px and top-left 300×90 px free of important content.
+Bottom-left counters `STUDENTS · TEACHERS · FEES · RESULTS` from `Agamoto.at(road, year(t))`, coloured by direction vs 2026 (`C.dirColor`); bottom trust line "10 futures · same luck · a fictional company · a rehearsal, not a prediction"; top-left the Eye · EYE OF AGAMOTO · VIDYA CLASSES. Keep the bottom 110 px and top-left 300×90 px free of important content.
 
 ## index.html API (for render.mjs and play.html)
 - `index.html?clip=<id>&road=<roadId>&s=<scale>` plays one clip on a fixed clock, no audio. `s=0.6667` renders at 1280×720.
-- `window.KAL = { ready: Promise, dur(id), frame(id, t, roadId), canvas }` — `await KAL.ready; KAL.frame('prologue', 1.5, 'build-retrain')` draws that frame synchronously.
+- `window.AGAMOTO = { ready: Promise, dur(id), frame(id, t, roadId), canvas }` — `await AGAMOTO.ready; AGAMOTO.frame('prologue', 1.5, 'build-retrain')` draws that frame synchronously.
 - `index.html` alone plays the whole story live (keys 1/2 to choose, Enter to lock).
 
 ## QC

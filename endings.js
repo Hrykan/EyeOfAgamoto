@@ -3,6 +3,7 @@
   'use strict';
   var CLIPS = root.CLIPS = root.CLIPS || {};
   var P = C.PALETTE, W = 1920, H = 1080, END_DUR = 12;
+  var PREFER_OWN_END = true; // end-* shots use this file's own 2036 room (looks right, independent of scenes.js timing)
   var TONE = { trusted: 'good', lean: 'good', smaller: 'steady', empty: 'hard' };
   var TAGCOL = { trusted: P.teal, lean: P.saffron, smaller: P.mustard, empty: '#4b6fa8' };
   var STAMPCOL = { trusted: '#1d7a4a', lean: '#1d7a4a', smaller: '#a87614', empty: '#3d5a80' };
@@ -21,7 +22,7 @@
       notice: { x: 1400, y: 140, w: 440, h: 330 }, sunanda: { x: 800, y: 600 }, desks: desks };
   })();
   function LAY() {
-    var L = root.SET && root.SET.layout;
+    var L = !PREFER_OWN_END && root.SET && root.SET.layout;
     if (!(L && L.desks && L.desks.length)) return FB;
     return { window: L.window || FB.window, board: L.board || FB.board, screen: L.screen || FB.screen, notice: L.notice || FB.notice, sunanda: L.sunanda || FB.sunanda, desks: L.desks };
   }
@@ -35,13 +36,13 @@
 
   /* ---------- config ---------- */
   function fbConfig(road, Y) {
-    var v = Kal.at(road, Y);
+    var v = Agamoto.at(road, Y);
     return { year: Y, students: v.students, teachers: v.teachers, seated: Math.round(v.students / 50), teacherFigs: Math.round(v.teachers / 4),
       ai: road.c1 === 'build' && Y >= 2026.6, mentors: road.c2 === 'retrain' && Y >= 2027.6, light: 0.5, cards: [] };
   }
   function baseCfg(road, Y) { return hasSet() ? SET.config(road, Y) : fbConfig(road, Y); }
   function endCfg(road, id) {
-    var b = baseCfg(road, 2036), cfg = {}, k, cap = LAY().desks.length;
+    var b = PREFER_OWN_END ? fbConfig(road, 2036) : baseCfg(road, 2036), cfg = {}, k, cap = LAY().desks.length;
     for (k in b) cfg[k] = b[k];
     cfg.cards = [];
     if (id === 'trusted') { cfg.seated = cap; cfg.ai = true; cfg.mentors = true; cfg.teacherFigs = Math.max(cfg.teacherFigs || 0, 5); }
@@ -94,7 +95,7 @@
     // notice board
     var n = L.notice; C.rect(n.x - 10, n.y - 10, n.w + 20, n.h + 20, P.wood, 8); C.rect(n.x, n.y, n.w, n.h, '#c19460', 9, { shadow: false });
     [[1430, 170, 120, 90, P.paper, -3], [1580, 180, 110, 130, P.mustard, 4], [1720, 165, 100, 100, P.paper, -2], [1440, 300, 130, 110, P.coral, 3], [1600, 330, 150, 100, P.paper, -4], [1740, 320, 90, 120, P.teal, 2]].forEach(function (p, k) {
-      c.save(); c.translate(p[0] + p[2] / 2, p[1] + p[3] / 2); c.rotate(p[5] * Math.PI / 180); C.rect(-p[2] / 2, -p[3] / 2, p[2], p[3], p[4], 20 + k, { rough: 2, lift: 3, blur: 6 });
+      c.save(); c.translate(p[0] + p[2] / 2, p[1] + p[3] / 2); c.rotate(p[5] * Math.PI / 180); C.rect(-p[2] / 2, -p[3] / 2, p[2], p[3], p[4], 20 + k, { rough: 2, lift: 2, blur: 3 });
       c.fillStyle = P.ink; c.globalAlpha = 0.5; for (var q = 0; q < 4; q++) c.fillRect(-p[2] / 2 + 12, -p[3] / 2 + 18 + q * 16, p[2] - 24 - (q % 2) * 20, 4); c.restore();
     });
     // people and desks, back row first
@@ -105,7 +106,7 @@
       L.desks.forEach(function (d, di) {
         if (d.r !== row) return; var sc = d.s || 1;
         if (di < occ) C.figure(d.x, d.y, 150 * sc, 'sit', C.outfitFor(di), di % 2 === 1, t + di * 0.7);
-        C.rect(d.x - 75 * sc, d.y - 26 * sc, 150 * sc, 20 * sc, '#b07a4c', 40 + di, { rough: 1.5, lift: 3, blur: 6 });
+        C.rect(d.x - 75 * sc, d.y - 26 * sc, 150 * sc, 20 * sc, '#b07a4c', 40 + di, { rough: 1.5, lift: 2, blur: 3, shadowAlpha: 0.2 });
         C.rect(d.x - 69 * sc, d.y - 6 * sc, 138 * sc, 44 * sc, P.wood, 70 + di, { rough: 2, shadow: false });
       });
       for (i = 0; i < mentorN; i++) if (i % 3 === row) {
@@ -144,17 +145,17 @@
     var P1, P2, P3, ring, ring2;
     function boxRing(b, padx, pady) { return { x: b.cx, y: b.cy - 30, rx: Math.min(560, (b.x1 - b.x0) / 2 + padx), ry: Math.min(230, (b.y1 - b.y0) / 2 + pady) }; }
     if (id === 'trusted') {
-      P1 = { x: all.cx, y: all.cy - 60, z: 1.25 }; ring = boxRing(all, 150, 130);
+      P1 = { x: scr.x + scr.w / 2 - 60, y: 470, z: 1.3 }; ring = { x: scr.x + scr.w / 2, y: scr.y + scr.h / 2, rx: scr.w / 2 + 34, ry: scr.h / 2 + 30 };
       P2 = { x: grp.cx + 40, y: grp.cy + 50, z: 2.0 }; P3 = { x: nt.x + nt.w / 2, y: nt.y + nt.h / 2 + 40, z: 1.5 }; ring2 = { x: nt.x + nt.w / 2, y: nt.y + nt.h / 2, rx: nt.w / 2 + 20, ry: nt.h / 2 + 20 };
     } else if (id === 'lean') {
-      P1 = { x: scr.x + scr.w / 2 - 40, y: scr.y + scr.h / 2 + 90, z: 1.6 }; ring = { x: scr.x + scr.w / 2, y: scr.y + scr.h / 2, rx: scr.w / 2 + 40, ry: scr.h / 2 + 35 };
+      P1 = { x: scr.x + scr.w / 2 - 60, y: scr.y + scr.h / 2 + 150, z: 1.45 }; ring = { x: scr.x + scr.w / 2, y: scr.y + scr.h / 2, rx: scr.w / 2 + 34, ry: scr.h / 2 + 30 };
       P2 = { x: all.cx, y: all.cy - 50, z: 1.55 }; P3 = { x: nt.x + nt.w / 2, y: nt.y + nt.h / 2 + 40, z: 1.5 }; ring2 = { x: nt.x + nt.w / 2, y: nt.y + nt.h / 2, rx: nt.w / 2 + 20, ry: nt.h / 2 + 20 };
     } else if (id === 'smaller') {
-      var bb = bo || all; P1 = { x: bb.cx, y: bb.cy - 60, z: 1.35 }; ring = boxRing(bb, 140, 120);
+      var bb = bo || all; P1 = { x: bb.cx, y: bb.cy - 60, z: 1.3 }; ring = boxRing(bb, 140, 120);
       P2 = { x: (grp || bb).cx + 40, y: (grp || bb).cy - 30, z: 2.0 };
       var be2 = be || all; P3 = { x: be2.cx, y: be2.cy - 40, z: 1.4 }; ring2 = boxRing(be2, 130, 110);
     } else {
-      var b3 = bo || all; P1 = { x: b3.cx, y: b3.cy - 90, z: 2.0 }; ring = { x: b3.cx, y: b3.cy - 70, rx: (b3.x1 - b3.x0) / 2 + 120, ry: 150 };
+      var b3 = bo || all; P1 = { x: b3.cx, y: b3.cy - 90, z: 1.4 }; ring = { x: b3.cx, y: b3.cy - 60, rx: (b3.x1 - b3.x0) / 2 + 110, ry: 120 };
       var be3 = be || all; P2 = { x: be3.cx, y: be3.cy - 40, z: 1.4 };
       P3 = { x: sun.x + 100, y: sun.y - 130, z: 1.7 }; ring2 = { x: sun.x, y: sun.y - 120, rx: 120, ry: 170 };
     }
@@ -165,7 +166,19 @@
       { t: 5.0, x: c2.x, y: c2.y, z: c2.z }, { t: 7.4, x: c2.x + 26, y: c2.y - 8, z: c2.z * 1.06, ease: 'linear' },
       { t: 8.5, x: 960, y: 540, z: 1.0, ease: 'inout' }, { t: 9.8, x: 940, y: 548, z: 1.04, ease: 'linear' },
       { t: 10.9, x: c3.x, y: c3.y, z: c3.z, ease: 'inout' }, { t: 12, x: c3.x - 14, y: c3.y - 6, z: c3.z * 1.02, ease: 'linear' }];
-    return { id: id, cfg: cfg, keys: keys, ring: ring, ring2: ring2, c1: keys[3], c3: c3, tgt1: { x: ring.x - ring.rx * 0.72, y: ring.y - ring.ry * 0.62 }, tgt2: { x: ring2.x - ring2.rx * 0.7, y: ring2.y - ring2.ry * 0.5 } };
+    function cap(r, z) { return { x: r.x, y: r.y, rx: Math.min(r.rx, 340 / z), ry: Math.min(r.ry, 230 / z) }; }
+    return { id: id, cfg: cfg, keys: keys, ring: cap(ring, c1.z), ring2: cap(ring2, c3.z), c1: keys[3], c3: c3 };
+  }
+
+  // callout beside a ring (side with room), arrow to the ring edge; cam = {x,y,z} the camera it sits in; minSY keeps clear of the stamp
+  function place(c, text, ring, cam, p, rot, bg, minSY) {
+    var z = cam.z, size = 34 / z + 8, wW = labelW(c, text, size, 700) + 40, half = wW * z / 2;
+    var rsx = 960 + (ring.x - cam.x) * z, rsy = 540 + (ring.y - cam.y) * z, left = rsx > 1150;
+    var sx = left ? rsx - ring.rx * z - 60 - half : rsx + ring.rx * z + 60 + half, sy = rsy - ring.ry * z * 0.45;
+    sx = C.clamp(sx, half + 24, 1896 - half); sy = C.clamp(sy, minSY, 760);
+    var cx = cam.x + (sx - 960) / z, cy = cam.y + (sy - 540) / z;
+    var tx = ring.x + (left ? -1 : 1) * ring.rx * 0.97, ty = ring.y - ring.ry * 0.12;
+    C.callout(text, cx, cy, tx, ty, p, { size: size, rot: rot, bg: bg });
   }
 
   /* ---------- end clips ---------- */
@@ -177,15 +190,15 @@
     var cam = C.track(t, K.keys);
     c.fillStyle = P.cream; c.fillRect(0, 0, W, H);
     C.withCam(cam, function () {
-      drawRoom(c, K.cfg, t, END_DUR); C.use(c);
+      if (PREFER_OWN_END) fbRoom(c, K.cfg, t, END_DUR); else drawRoom(c, K.cfg, t, END_DUR); C.use(c);
       c.fillStyle = dawn ? 'rgba(70,100,150,0.16)' : 'rgba(255,190,100,0.07)'; c.fillRect(-1000, -1000, 4000, 3200);
       if (t < 5.0) {
         var rp = C.prog(t, 2.5, 3.3); C.ring(K.ring.x, K.ring.y, K.ring.rx, K.ring.ry, rp, P.saffron, 8);
-        var cz = K.c1.z; C.callout(info.callouts[0], K.c1.x - 330 / cz, K.c1.y - 270 / cz, K.tgt1.x, K.tgt1.y, C.prog(t, 2.9, 3.6), { size: 34 / cz * 1.0 + 8, rot: -2 });
+        place(c, info.callouts[0], K.ring, K.c1, C.prog(t, 2.9, 3.6), -2, null, 130);
       }
       if (t >= 9.8) {
-        var cz3 = K.c3.z; C.ring(K.ring2.x, K.ring2.y, K.ring2.rx, K.ring2.ry, C.prog(t, 10.0, 10.8), P.saffron, 8);
-        C.callout(info.callouts[1], K.c3.x - 330 / cz3, K.c3.y - 20 / cz3, K.tgt2.x, K.tgt2.y, C.prog(t, 10.3, 11.0), { size: 34 / cz3 + 8, rot: 2, bg: P.saffron });
+        C.ring(K.ring2.x, K.ring2.y, K.ring2.rx, K.ring2.ry, C.prog(t, 10.0, 10.8), P.saffron, 8);
+        place(c, info.callouts[1], K.ring2, K.c3, C.prog(t, 10.3, 11.0), 2, P.saffron, 340);
       }
     });
     motes(c, t, 14, dawn ? 0.28 : 0.4);
@@ -264,7 +277,7 @@
     var Y = 2036 - 10 * C.ease(C.prog(t, 0.2, 2.8));
     if (t >= 2.97) { // exact REST-2026
       c.fillStyle = P.cream; c.fillRect(0, 0, W, H);
-      var r0 = Kal.road('build-retrain'); C.withCam(C.REST, function () { drawRoom(c, baseCfg(r0, 2026), 0, 4); C.use(c); }); return;
+      var r0 = Agamoto.road('build-retrain'); C.withCam(C.REST, function () { drawRoom(c, baseCfg(r0, 2026), 0, 4); C.use(c); }); return;
     }
     if (t <= 0 && endc) { endc.draw(c, 12, road); C.use(c); return; }
     var dst = c, src = offscreen();
@@ -304,9 +317,14 @@
 
   /* ---------- states ---------- */
   root.ENDINGS = {
-    startState: function (id, road) { return { cam: { x: 960, y: 540, z: 1 }, year: 2030, shot: 'REST', cards: [road.c1, road.c2] }; },
-    endState: function (id, road) { var K = plan(road), k = K.keys[K.keys.length - 1]; return { cam: { x: k.x, y: k.y, z: k.z }, year: 2036, shot: 'END', cards: [] }; }
+    startState: function (id, road) {
+      if (id === 'rewind') return root.ENDINGS.endState('end-' + road.id, road);
+      return { cam: { x: 960, y: 540, z: 1 }, year: 2030, shot: 'REST', cards: [road.c1, road.c2] };
+    },
+    endState: function (id, road) {
+      if (id === 'rewind') return { cam: { x: 960, y: 540, z: 1 }, year: 2026, shot: 'REST', cards: [] };
+      var K = plan(road), k = K.keys[K.keys.length - 1]; return { cam: { x: k.x, y: k.y, z: k.z }, year: 2036, shot: 'END', cards: [] };
+    }
   };
-  root.ENDINGS.startState.rewind = null;
 })(typeof window !== 'undefined' ? window : this);
 var ENDINGS = window.ENDINGS;
