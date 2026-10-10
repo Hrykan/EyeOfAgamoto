@@ -129,7 +129,11 @@
     return { a: aId, b: bId, k: k, same: { a: fa, b: fb, delta: d }, mean: dm, endingA: a.futures[k].ending, endingB: b.futures[k].ending };
   }
 
-  var api = { init: init, ROADS: ROADS, YEARS: YEARS, simulate: simulate, road: road, compare: compare, at: at,
+  // Wording for a decision as the room sees it: the second decision is phrased for the first choice (leans don't change).
+  function question(di, c1) { var d = CO.decisions[di], v = d.byFirstChoice && c1 && d.byFirstChoice[c1]; return (v && v.question) || d.question; }
+  function option(di, id, c1) { var d = CO.decisions[di], v = d.byFirstChoice && c1 && d.byFirstChoice[c1]; return Object.assign({}, opt(d, id), (v && v.options && v.options[id]) || {}); }
+
+  var api = { init: init, question: question, option: option, ROADS: ROADS, YEARS: YEARS, simulate: simulate, road: road, compare: compare, at: at,
     future: future, counts: counts, mode: mode, endingOf: endingOf, company: function () { return CO; }, _clear: function () { cache = {}; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Agamoto = api;
 })(this);

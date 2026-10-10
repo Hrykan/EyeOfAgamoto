@@ -220,16 +220,16 @@
   }
 
   /* ---------- choice cards ---------- */
-  function cardLabel(slot, kind) {
-    var d = Agamoto.company().decisions[slot], o = d.options.filter(function (q) { return q.id === kind; })[0];
-    return o ? o.label : kind;
+  function cardLabel(slot, kind, c1) {
+    var o = Agamoto.option(slot, kind, c1);
+    return o && o.label ? o.label : kind;
   }
-  function drawCard(c, slot, kind, age) {
+  function drawCard(c, slot, kind, age, c1) {
     var cy = slot === 0 ? 235 : 375, rot = slot === 0 ? -3 : 2, f = CL(age / 0.2), sc = 1 + 0.22 * (1 - C.easeOut(f)), sq = 1 - 0.1 * Math.sin(Math.PI * f);
     c.save(); c.translate(1610, cy); c.rotate(rot * Math.PI / 180); c.scale(sc, sc * sq);
     var fill = slot === 0 ? P.saffron : P.teal;
     C.paper(C.torn(-180, -60, 360, 120, 40 + slot, 3), fill, { lift: 4 + 12 * (1 - f), blur: 10 + 10 * (1 - f), halftone: 0.4, dot: 'rgba(31,27,24,0.12)' });
-    var txt = slot === 0 ? P.ink : P.paper, label = cardLabel(slot, kind).toUpperCase(), size = 40;
+    var txt = slot === 0 ? P.ink : P.paper, label = cardLabel(slot, kind, c1).toUpperCase(), size = 40;
     c.font = '800 ' + size + 'px ' + C.FONTS.label; while (c.measureText(label).width > 310 && size > 20) { size -= 2; c.font = '800 ' + size + 'px ' + C.FONTS.label; }
     C.label(slot === 0 ? 'Choice 1 · 2026' : 'Choice 2 · 2027', -150, -36, 20, slot === 0 ? P.inkSoft : '#cfe9e5', 'left', 700);
     C.label(label, 0, 12, size, txt, 'center', 800);
@@ -297,7 +297,7 @@
     c.save(); c.globalAlpha = 0.07; c.fillStyle = rgb(sky.hor); c.fillRect(0, 0, 1920, 1080); c.restore();
     // pinned cards
     var ages = cfg.cardAge || [];
-    (cfg.cards || []).forEach(function (k, i) { var age = ages[i] == null ? 9 : ages[i]; if (age >= 0) drawCard(c, i, k, age); });
+    (cfg.cards || []).forEach(function (k, i) { var age = ages[i] == null ? 9 : ages[i]; if (age >= 0) drawCard(c, i, k, age, cfg.cards[0]); });
   };
 
   /* ---------- clip helpers ---------- */
@@ -449,8 +449,9 @@
           var mp = C.prog(t, 5.5, 6.6); if (mp > 0 && t < 10.5) { ctx.save(); ctx.globalAlpha *= fade(t, 5.5, 10.5, 0.3, 0.5); C.callout('Mentors · small groups', 1000, 500, 1000, 700, mp, { size: 30, bg: P.mustard }); ctx.restore(); }
         }
       });
-      if (cutRoad) { cap(ctx, 'Fewer teachers. Lower fees.', [], t, 1.0, 4.4); cap(ctx, 'The boxes go out; the rooms *thin*.', [], t, 5.0, 8.4); }
-      else { cap(ctx, 'AI explains. Teachers become *mentors*.', [], t, 1.0, 4.6); cap(ctx, 'Small groups. Parents who call back.', [], t, 5.2, 8.4); }
+      var noAI = road.c1 === 'ban';
+      if (cutRoad) { cap(ctx, noAI ? 'Fewer teachers. Fees drop to fight the free apps.' : 'AI explains, so fewer teachers. Lower fees.', [], t, 1.0, 4.4); cap(ctx, 'The boxes go out; the rooms *thin*.', [], t, 5.0, 8.4); }
+      else { cap(ctx, noAI ? 'No AI in class. Teachers become *mentors*.' : 'AI explains. Teachers become *mentors*.', [], t, 1.0, 4.6); cap(ctx, 'Small groups. Parents who call back.', [], t, 5.2, 8.4); }
       luckOverlay(ctx, t, road);
     } };
   }

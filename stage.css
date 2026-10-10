@@ -26,24 +26,30 @@ body.idle{cursor:none}
 #splash{z-index:50;background:radial-gradient(ellipse at 50% 30%,#2d2520 0%,#17120f 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:1;visibility:visible;pointer-events:auto}
 #splash.layer.on{transition:opacity .35s ease,visibility 0s}
 #splash.off{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s ease,visibility 0s linear .8s}
-#splash .eye{width:300px;height:156px;overflow:visible;filter:drop-shadow(0 6px 36px rgba(224,134,62,.30));margin-bottom:18px}
+#splash .eye{width:230px;height:120px;overflow:visible;filter:drop-shadow(0 6px 36px rgba(224,134,62,.30));margin-bottom:10px}
 #splash .eye .iris{animation:look 7s ease-in-out infinite alternate}
 #splash .eye .lid{transform-origin:50% 0;animation:blink 6.5s ease-in-out infinite;transform:scaleY(0)}
 @keyframes look{from{transform:translateX(-52px)}to{transform:translateX(52px)}}
 @keyframes blink{0%,92%,100%{transform:scaleY(0)}95%{transform:scaleY(1)}}
-#splash .ag{font-size:78px;line-height:1;color:var(--cream);font-weight:800;letter-spacing:.24em;padding-left:.24em}
+#splash .ag{font-size:70px;line-height:1;color:var(--cream);font-weight:800;letter-spacing:.24em;padding-left:.24em}
 #splash .vc{font-size:36px;color:var(--saffron);letter-spacing:.34em;font-weight:700;margin-top:8px;padding-left:.34em}
 #splash .tag{font-size:34px;color:#bfae92;margin-top:14px}
-#splash .menu{display:grid;grid-template-columns:520px 870px;gap:64px;margin-top:40px;align-items:start}
-#splash .col{display:flex;flex-direction:column;align-items:flex-start;gap:18px;min-width:0}
-#splash .go{width:460px;height:96px;display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--ink);position:relative;cursor:pointer;margin-top:46px;animation:breathe 2.4s ease-in-out infinite}
+#splash .menu{display:grid;grid-template-columns:520px 870px;gap:64px;margin-top:30px;align-items:start}
+#splash .col{display:flex;flex-direction:column;align-items:flex-start;gap:16px;min-width:0}
+#splash .go{width:460px;height:92px;display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--ink);position:relative;cursor:pointer;margin-top:40px;animation:breathe 2.4s ease-in-out infinite}
 #splash .go:focus-visible{outline:3px solid var(--saffron);outline-offset:6px}
 #splash .sub{font-size:30px;line-height:1.2;color:#cdbfa5;max-width:480px}
+#splash .modes{display:flex;border-radius:6px;overflow:hidden;box-shadow:0 0 0 2px rgba(244,234,215,.25)}
+#splash .modes button{font-family:var(--cond);font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-size:24px;line-height:1;border:0;padding:12px 18px 9px;cursor:pointer;background:rgba(244,234,215,.08);color:#cdbfa5}
+#splash .modes button[aria-checked="true"]{background:var(--cream);color:var(--ink)}
+#splash .modes button:focus-visible{outline:3px solid var(--saffron);outline-offset:-3px}
+#splash .modehint{font-size:24px;line-height:1.25;color:#a6967c;max-width:480px;margin-top:-6px}
+#choice .hint.solo{left:420px;width:1080px;top:930px;font-size:30px}
 #splash .link{background:none;border:0;padding:6px 0;font-size:26px;color:var(--saffron);cursor:pointer;text-align:left}
 #splash .link:hover{color:#f0a15e;text-decoration:underline;text-underline-offset:6px}
 #splash .h{font-size:24px;color:#a6967c;letter-spacing:.18em}
-#splash .grid{display:grid;grid-template-columns:repeat(2,420px);gap:22px 30px}
-.scard{position:relative;width:420px;height:196px}
+#splash .grid{display:grid;grid-template-columns:repeat(2,420px);gap:18px 30px}
+.scard{position:relative;width:420px;height:188px}
 .scard .in{padding:16px 22px 14px 40px;display:flex;flex-direction:column;gap:3px}
 .scard .bar{position:absolute;left:0;top:0;bottom:0;width:12px;background:var(--tone)}
 .scard .key{position:absolute;right:16px;top:14px;width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--cream);font-family:var(--cond);font-weight:800;font-size:26px;display:flex;align-items:center;justify-content:center}
@@ -58,7 +64,11 @@ body.idle{cursor:none}
 .keys{font-size:26px;color:#bfae92;text-align:center;line-height:1.6}
 .keys b{font-size:22px;color:var(--cream);letter-spacing:.16em;margin-right:8px}
 .keys kbd,#ctrl kbd{font-family:var(--cond);font-weight:700;font-style:normal;color:var(--ink);background:var(--paper-dark);padding:0 9px;border-radius:4px;margin:0 2px}
-#splash .keys{position:absolute;left:80px;right:80px;bottom:40px}
+#splash .keys{margin-top:30px;max-width:1700px}
+#splash .soon{position:relative;width:870px;padding:14px 22px 14px 22px;border:2px dashed rgba(244,234,215,.32);border-radius:6px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;row-gap:4px;align-items:baseline}
+#splash .soon .tagsoon{grid-row:1;font-size:18px;letter-spacing:.14em;color:var(--ink);background:var(--mustard);padding:5px 10px 3px;border-radius:3px}
+#splash .soon .st{grid-row:1;font-size:28px;color:var(--cream)}
+#splash .soon .sd{grid-column:1 / -1;font-size:23px;line-height:1.25;color:#a6967c}
 #splash .go .sheet{background-color:var(--mustard)}
 #splash .go span{position:relative;z-index:2}
 @keyframes breathe{50%{transform:scale(1.045)}}

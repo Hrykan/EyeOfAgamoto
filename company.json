@@ -85,7 +85,35 @@
             "affordability": -0.3
           }
         }
-      ]
+      ],
+      "byFirstChoice": {
+        "ban": {
+          "question": "AI is banned in class. What happens to the teachers?",
+          "options": {
+            "cut": {
+              "label": "Cut staff to cut fees",
+              "consequence": "Compete with the free AI apps on price: fewer teachers, cheaper fees."
+            },
+            "retrain": {
+              "label": "Make teachers mentors",
+              "consequence": "No AI in class; teachers coach small groups and keep parents close."
+            }
+          }
+        },
+        "build": {
+          "question": "AI now does the explaining. What happens to the teachers?",
+          "options": {
+            "cut": {
+              "label": "Let AI teach, cut staff",
+              "consequence": "AI covers the explaining, so fewer teachers are needed and fees fall."
+            },
+            "retrain": {
+              "label": "Retrain teachers as mentors",
+              "consequence": "AI explains; teachers mentor small groups and talk to parents."
+            }
+          }
+        }
+      }
     }
   ],
   "luck": [

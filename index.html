@@ -11,7 +11,7 @@
   <div id="choice" class="layer"></div>
   <div id="map" class="layer"></div>
   <div id="compare" class="layer"></div>
-  <div id="paused" class="layer"><div class="lab">Paused</div><div class="keys ital"><kbd>1</kbd> <kbd>2</kbd> vote · <kbd>Enter</kbd> lock the choice · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div></div>
+  <div id="paused" class="layer"><div class="lab">Paused</div><div class="keys ital"><kbd>1</kbd> <kbd>2</kbd> choose (with a room: add a vote) · <kbd>Enter</kbd> lock a room vote · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div></div>
   <div id="toast" class="lab"></div>
   <div id="ctrl" role="toolbar" aria-label="Playback">
     <button type="button" data-a="menu" title="Back to the menu (M)">Menu</button>
@@ -36,15 +36,25 @@
     <div class="menu">
       <div class="col">
         <div class="paper go lab" id="mStart" role="button" tabindex="0"><div class="sheet" id="gosheet"></div><span>Start the story</span></div>
-        <div class="sub ital">The prologue, then the room votes twice: what to do about AI tutors, and what happens to the teachers.</div>
+        <div class="sub ital">The prologue, then two choices: AI tutors, then the teachers.</div>
+        <div class="modes" role="radiogroup" aria-label="Who is playing">
+          <button type="button" role="radio" data-m="solo" class="lab">Playing alone</button>
+          <button type="button" role="radio" data-m="room" class="lab">With a room · votes</button>
+        </div>
+        <div class="modehint ital" id="modeHint"></div>
         <button type="button" class="link lab" id="mJump">Skip the prologue · go to the first vote ›</button>
       </div>
       <div class="col">
         <div class="h lab">Or jump into a scenario</div>
         <div class="grid" id="mScn"></div>
+        <div class="soon" aria-label="Coming soon">
+          <span class="tagsoon lab">Coming soon</span>
+          <div class="st lab">Write your own choice</div>
+          <div class="sd ital">Type a decision your institute is weighing. Claude turns it into effects on students, teachers, results and fees, runs the same ten futures with the same luck, and shows where it ends.</div>
+        </div>
       </div>
     </div>
-    <div class="keys ital"><b class="lab">Keyboard</b> <kbd>Enter</kbd> start · <kbd>1</kbd>–<kbd>4</kbd> pick a scenario · in the story: <kbd>1</kbd> <kbd>2</kbd> vote · <kbd>Enter</kbd> lock the choice · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div>
+    <div class="keys ital"><b class="lab">Keyboard</b> <kbd>Enter</kbd> start · <kbd>1</kbd>–<kbd>4</kbd> pick a scenario · in the story: <kbd>1</kbd> <kbd>2</kbd> choose (with a room: add a vote) · <kbd>Enter</kbd> lock a room vote · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div>
   </div>
 </div>
 <script src="engine.js"></script>
@@ -56,7 +66,7 @@ var stage = $('#stage'), V = [$('#vA'), $('#vB')], fb = $('#fb'), ci = 0;
 var RD0 = 'build-retrain', ROWS = ['ban-cut', 'ban-retrain', 'build-cut', 'build-retrain'];
 var SHORT = { ban: 'Ban AI', build: 'Build AI', cut: 'Cut staff', retrain: 'Retrain' };
 var CO = null, D = null;
-var S = { tok: 0, seg: null, mode: 'main', room: { c1: null, c2: null }, roomRoad: RD0, shown: RD0, tried: null, tries: {}, paused: false, ended: false,
+var S = { voting: false, tok: 0, seg: null, mode: 'main', room: { c1: null, c2: null }, roomRoad: RD0, shown: RD0, tried: null, tries: {}, paused: false, ended: false,
   votes: [0, 0], choiceOpen: -1, locked: false, cd: 0, fbOn: false, fbT: 0, prevT: 0, fromRect: [null, null], anims: [], hover: null, started: false, endFired: -1 };
 
 /* ---------- stage scaling ---------- */
@@ -122,7 +132,7 @@ var segPrologue = function () { return mk('prologue', RD0, { next: segWait1 }); 
 var segWait1 = function () { return mk('wait-1', RD0, { loop: true, next: segWait1, onStart: function () { openChoice(0); } }); };
 var segWait2 = function (c1) { return mk('wait-2-' + c1, c1 + '-retrain', { clip: 'wait-2', loop: true, next: function () { return segWait2(c1); }, onStart: function () { openChoice(1); } }); };
 var segC1 = function (c1) { return mk('c1-' + c1, c1 + '-retrain', { onStart: function () { flyCard(0, c1); }, next: function () { return S.mode === 'main' ? segWait2(c1) : segC2(S.mode === 'try' ? S.tried : S.roomRoad); } }); };
-var segC2 = function (road) { return mk('c2-' + road, road, { onStart: function () { flyCard(1, road.split('-')[1]); }, next: function () { return segEnd(road); } }); };
+var segC2 = function (road) { return mk('c2-' + road, road, { onStart: function () { flyCard(1, road.split('-')[1], road.split('-')[0]); }, next: function () { return segEnd(road); } }); };
 var segEnd = function (road) { return mk('end-' + road, road, { onStart: function () { S.shown = road; chime(); }, onEnd: function () { setTimeout(S.mode === 'try' ? showCompare : showMap, 500); } }); };
 var segRewind = function (road) { return mk('rewind-' + road, road, { clip: 'rewind', next: function () { return segC1(S.tried.split('-')[0]); } }); };
 
@@ -212,8 +222,9 @@ var OPTX = [430, 970], OPTY = 704, OPTR = [-1.4, 1.1];
 function openChoice(i) {
   if (S.choiceOpen === i) return;
   S.choiceOpen = i; S.votes = [0, 0]; S.locked = false; S.cd = 0; S.cdOn = false; S.mode = 'main';
-  var dec = D[i], el = $('#choice'); el.innerHTML = '';
-  var q = paper('q', 420, 556, 1080, 124, '<div class="t ital">' + esc(dec.question) + '</div>', 11 + i, { tape: true });
+  var c1 = i === 1 ? S.room.c1 : null, el = $('#choice'); el.innerHTML = '';
+  var dec = { year: D[i].year, question: Agamoto.question(i, c1), options: D[i].options.map(function (o) { return Agamoto.option(i, o.id, c1); }) };
+  var q = paper('q', 420, 556, 1080, 124, '<div class="t ital"' + (dec.question.length > 34 ? ' style="font-size:46px"' : '') + '>' + esc(dec.question) + '</div>', 11 + i, { tape: true });
   q.innerHTML += '<div class="yr lab">' + dec.year + ' · choice ' + (i + 1) + ' of 2</div>';
   q.querySelector('.in').firstChild.style.color = 'var(--ink)';
   el.appendChild(q);
@@ -221,20 +232,26 @@ function openChoice(i) {
     var t2 = i === 1;
     var c = paper('opt' + (t2 ? ' t2' : ''), OPTX[k], OPTY, 520, 200,
       '<div class="key">' + (k + 1) + '</div><div class="name lab" style="font-size:40px;line-height:.98;' + (t2 ? 'color:var(--paper)' : '') + '">' + esc(o.label) + '</div><div class="cons ital"' + (t2 ? ' style="color:#e7f2ef"' : '') + '>' + esc(o.consequence) + '</div>' +
-      '<div class="votes"><b>0</b><i>votes</i></div>', 31 + i * 7 + k, { tape: true });
+      (S.voting ? '<div class="votes"><b>0</b><i>votes</i></div>' : ''), 31 + i * 7 + k, { tape: true });
     c.style.setProperty('--r', OPTR[k] + 'deg'); c.style.transform = 'rotate(' + OPTR[k] + 'deg)';
     c.querySelector('.sheet').style.backgroundColor = t2 ? 'var(--teal)' : 'var(--saffron)';
     c.dataset.k = k; c.addEventListener('click', function () { vote(k); });
     el.appendChild(c);
   });
-  el.appendChild(paper('bar', 830, 938, 660, 34, '<div class="fill" style="left:8px;top:8px;right:8px;bottom:8px;position:absolute"></div>', 77, { j: 3 }));
-  var lb = paper('lockbtn lab', 1600, 920, 270, 70, '<span>Lock it in ›</span>', 88, { j: 3 }); lb.title = 'Lock the choice (Enter)'; lb.addEventListener('click', function () { lockChoice(); }); el.appendChild(lb);
-  var hint = document.createElement('div'); hint.className = 'hint ital'; hint.textContent = 'Click a card or press 1 / 2 to vote · Enter or Lock it in to go on'; el.appendChild(hint);
-  var secs = document.createElement('div'); secs.className = 'secs'; secs.textContent = '10'; el.appendChild(secs);
-  layer('#choice', true); setTimeout(function () { S.cdOn = true; }, 500);
+  var hint = document.createElement('div'); hint.className = 'hint ital';
+  if (S.voting) {
+    el.appendChild(paper('bar', 830, 938, 660, 34, '<div class="fill" style="left:8px;top:8px;right:8px;bottom:8px;position:absolute"></div>', 77, { j: 3 }));
+    var lb = paper('lockbtn lab', 1600, 920, 270, 70, '<span>Lock it in ›</span>', 88, { j: 3 }); lb.title = 'Lock the majority (Enter)'; lb.addEventListener('click', function () { lockChoice(); }); el.appendChild(lb);
+    hint.textContent = 'Room vote: each click or key press (1 / 2) adds a vote · Enter, Lock it in, or the timer takes the majority';
+    var secs = document.createElement('div'); secs.className = 'secs'; secs.textContent = '10'; el.appendChild(secs);
+  } else { hint.classList.add('solo'); hint.textContent = 'Click a card, or press 1 or 2, to choose'; }
+  el.appendChild(hint);
+  layer('#choice', true); if (S.voting) setTimeout(function () { S.cdOn = true; }, 500);
 }
 function vote(k) {
-  if (S.choiceOpen < 0 || S.locked || S.paused) return; S.votes[k]++;
+  if (S.choiceOpen < 0 || S.locked || S.paused) return;
+  if (!S.voting) { S.votes = [k === 0 ? 1 : 0, k === 1 ? 1 : 0]; lockChoice(); return; }
+  S.votes[k]++;
   var cards = document.querySelectorAll('#choice .opt');
   cards.forEach(function (c, j) { var v = c.querySelector('.votes'); v.querySelector('b').textContent = S.votes[j]; if (j === k) { v.classList.remove('bump'); void v.offsetWidth; v.classList.add('bump'); } c.classList.toggle('lead', S.votes[j] > S.votes[1 - j]); c.classList.toggle('trail', S.votes[j] < S.votes[1 - j]); });
   tick(true);
@@ -254,9 +271,9 @@ function closeChoice(k) {
 
 /* ---------- card flies into the frame ---------- */
 var SLOT = [{ cx: 1610, cy: 235, rot: -3, col: 'var(--saffron)', fg: 'var(--ink)' }, { cx: 1610, cy: 375, rot: 2, col: 'var(--teal)', fg: 'var(--paper)' }];
-function flyCard(i, optId) {
-  var o = D[i].options.filter(function (x) { return x.id === optId; })[0], from = S.fromRect[i] || { x: 700, y: 560, w: 520, h: 200, rot: 0 }, sl = SLOT[i];
-  if (S.choiceOpen === i) closeChoice(D[i].options.indexOf(o));
+function flyCard(i, optId, c1) {
+  var o = Agamoto.option(i, optId, c1), from = S.fromRect[i] || { x: 700, y: 560, w: 520, h: 200, rot: 0 }, sl = SLOT[i];
+  if (S.choiceOpen === i) closeChoice(D[i].options.map(function (x) { return x.id; }).indexOf(optId));
   var el = paper('fly', 0, 0, 520, 200,
     '<div class="name lab" style="color:' + sl.fg + '">' + esc(o.label) + '</div><div class="cons ital" style="color:' + (i ? '#e7f2ef' : 'var(--ink-soft)') + '">' + esc(o.consequence) + '</div>', 5 + i, { j: 4 });
   el.style.width = from.w + 'px'; el.style.height = from.h + 'px'; el.querySelector('.sheet').style.backgroundColor = sl.col;
@@ -278,7 +295,7 @@ var CX = { start: [60, 200], c1: [330, 320], c2: [760, 320], tile: [1190, 660] }
 function tileRect(r) { var y = RY[ROWS.indexOf(r)]; return { x: CX.tile[0], y: y - 82, w: CX.tile[1], h: 164 }; }
 function c2Rect(r) { var y = RY[ROWS.indexOf(r)]; return { x: CX.c2[0], y: y - 52, w: CX.c2[1], h: 104 }; }
 function c1Rect(c1) { var a = c1 === 'ban' ? 0 : 2, y = (RY[a] + RY[a + 1]) / 2; return { x: CX.c1[0], y: y - 52, w: CX.c1[1], h: 104 }; }
-function optLabel(di, id) { return D[di].options.filter(function (o) { return o.id === id; })[0].label; }
+function optLabel(di, id, c1) { return Agamoto.option(di, id, c1).label; }
 function pathD(a, b) { var x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2, m = (x1 + x2) / 2; return 'M' + x1 + ',' + y1 + ' C' + m + ',' + y1 + ' ' + m + ',' + y2 + ' ' + x2 + ',' + y2; }
 function buildMap() {
   var el = $('#map'); el.innerHTML = '';
@@ -298,7 +315,7 @@ function buildMap() {
     n.dataset.c1 = c1; n.dataset.roads = ROWS.filter(function (q) { return q.indexOf(c1) === 0; }).join(' '); el.appendChild(n);
   });
   ROWS.forEach(function (rd, i) {
-    var c2 = rd.split('-')[1], r = c2Rect(rd), n = paper('node c2', r.x, r.y, r.w, r.h, '<div class="k lab">The teachers</div><div class="n lab" style="font-size:31px">' + esc(optLabel(1, c2)) + '</div>', 80 + i);
+    var c2 = rd.split('-')[1], r = c2Rect(rd), n = paper('node c2', r.x, r.y, r.w, r.h, '<div class="k lab">The teachers</div><div class="n lab" style="font-size:31px">' + esc(optLabel(1, c2, rd.split('-')[0])) + '</div>', 80 + i);
     n.dataset.road = rd; el.appendChild(n);
     var info = Agamoto.road(rd), E = info.endingInfo, cnt = info.endings[info.ending], tone = E.tone === 'good' ? 'var(--teal)' : E.tone === 'hard' ? 'var(--coral)' : 'var(--mustard)';
     var tr = tileRect(rd), pips = ''; for (var p = 0; p < 10; p++) pips += '<s class="' + (p < cnt ? 'on' : '') + '"></s>';
@@ -418,9 +435,9 @@ function buildMenu() {
     var p = rd.split('-'), info = Agamoto.road(rd), E = info.endingInfo, cnt = info.endings[info.ending];
     var tone = E.tone === 'good' ? 'var(--teal)' : E.tone === 'hard' ? 'var(--coral)' : 'var(--mustard)';
     var c = document.createElement('div'); c.className = 'paper scard'; c.style.setProperty('--tone', tone);
-    c.innerHTML = '<div class="sheet" style="clip-path:' + torn(420, 196, 120 + i, 4) + '"></div><div class="in">' +
+    c.innerHTML = '<div class="sheet" style="clip-path:' + torn(420, 188, 120 + i, 4) + '"></div><div class="in">' +
       '<div class="key">' + (i + 1) + '</div><div class="bar"></div>' +
-      '<div class="k lab">2026 · ' + esc(optLabel(0, p[0])) + '</div><div class="k lab">2027 · ' + esc(optLabel(1, p[1])) + '</div>' +
+      '<div class="k lab">2026 · ' + esc(optLabel(0, p[0])) + '</div><div class="k lab">2027 · ' + esc(optLabel(1, p[1], p[0])) + '</div>' +
       '<div class="e ital">' + esc(E.label) + '</div><div class="of lab">' + cnt + ' of 10 futures</div>' +
       '<div class="acts"><button type="button" class="play lab">Play from 2026 ›</button><button type="button" class="only lab">2036 only</button></div></div>';
     c.querySelector('.play').addEventListener('click', function () { playScenario(rd, false); });
@@ -428,6 +445,14 @@ function buildMenu() {
     g.appendChild(c);
   });
 }
+function setVoting(on) {
+  S.voting = !!on; try { localStorage.setItem('agamoto.voting', S.voting ? '1' : '0'); } catch (e) {}
+  document.querySelectorAll('#splash .modes button').forEach(function (b) { b.setAttribute('aria-checked', String((b.dataset.m === 'room') === S.voting)); });
+  $('#modeHint').textContent = S.voting ? 'Each click or key press adds a vote; Enter, Lock it in, or a 10-second timer takes the majority.' : 'One click or key press chooses, and the story moves on.';
+}
+var savedVoting = false; try { savedVoting = localStorage.getItem('agamoto.voting') === '1'; } catch (e) {}
+setVoting(savedVoting);
+document.querySelectorAll('#splash .modes button').forEach(function (b) { b.addEventListener('click', function () { setVoting(b.dataset.m === 'room'); b.blur(); }); });
 $('#mStart').addEventListener('click', startStory);
 $('#mJump').addEventListener('click', jumpToVote);
 addEventListener('pointerdown', function () { audioInit(); });
@@ -456,7 +481,7 @@ addEventListener('keydown', function (e) {
 fetch('company.json').then(function (r) { return r.json(); }).then(function (co) { CO = co; D = co.decisions; Agamoto.init(co); return Promise.all([document.fonts.load('italic 40px "Instrument Serif"'), document.fonts.load('700 30px "Barlow Condensed"'), document.fonts.load('800 30px "Barlow Condensed"')]); })
   .then(function () { buildMenu(); return prep(hid(), segPrologue()); }).then(function () { requestAnimationFrame(function (t) { lastNow = t; loop(t); }); });
 $('#gosheet').style.clipPath = torn(460, 96, 17, 4);
-window.PLAY = { startStory: startStory, jumpToVote: jumpToVote, playScenario: playScenario, showMenu: showMenu, skip: skip, seekBy: seekBy, restart: restart, S: S, startSeg: startSeg, segs: { prologue: segPrologue, wait1: segWait1, wait2: segWait2, c1: segC1, c2: segC2, end: segEnd, rewind: segRewind }, showMap: showMap, showCompare: showCompare, openChoice: openChoice, vote: vote, lockChoice: lockChoice, chooseRoad: chooseRoad, begin: begin };
+window.PLAY = { setVoting: setVoting, startStory: startStory, jumpToVote: jumpToVote, playScenario: playScenario, showMenu: showMenu, skip: skip, seekBy: seekBy, restart: restart, S: S, startSeg: startSeg, segs: { prologue: segPrologue, wait1: segWait1, wait2: segWait2, c1: segC1, c2: segC2, end: segEnd, rewind: segRewind }, showMap: showMap, showCompare: showCompare, openChoice: openChoice, vote: vote, lockChoice: lockChoice, chooseRoad: chooseRoad, begin: begin };
 })();
 </script>
 </body></html>

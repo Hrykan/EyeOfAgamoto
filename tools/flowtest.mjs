@@ -14,7 +14,7 @@ await pg.exposeFunction('_seg', (id, fb) => log.push([((Date.now() - t0) / 1000)
 await pg.evaluate(() => { let last = null; setInterval(() => { const s = PLAY.S.seg; if (s && s.id !== last) { last = s.id; window._seg(s.id, PLAY.S.fbOn); } }, 50); });
 const shot = n => pg.screenshot({ path: `${out}/flow-${n}.png` });
 const until = (fn, ms = 60000) => pg.waitForFunction(fn, null, { timeout: ms, polling: 100 });
-await pg.keyboard.press("Enter");
+await pg.evaluate(() => PLAY.setVoting(true)); await pg.keyboard.press("Enter");
 await until(() => PLAY.S.seg && PLAY.S.seg.id === 'wait-1', 30000); await pg.waitForTimeout(700);
 await pg.keyboard.press('1'); await pg.keyboard.press('1'); await pg.keyboard.press('2'); await pg.waitForTimeout(300); await shot('1-choice');
 await pg.keyboard.press('Enter'); await pg.waitForTimeout(280); await shot('2-cardfly'); await pg.waitForTimeout(900); await shot('3-landed');

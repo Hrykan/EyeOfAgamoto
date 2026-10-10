@@ -14,10 +14,12 @@ const ctrl = async a => { await pg.mouse.move(640, 300); await pg.mouse.move(650
 await shot('1-menu');
 await ok('menu: skip the prologue → first vote', async () => { await pg.click('#mJump'); await until(() => PLAY.S.seg && PLAY.S.seg.id === 'wait-1'); });
 await pg.waitForTimeout(800); await shot('2-vote');
-await ok('click card 1 + Lock it in → c1-ban', async () => { await pg.click('#choice .opt[data-k="0"]'); await pg.click('#choice .lockbtn'); await until(() => PLAY.S.seg.id === 'c1-ban'); });
+await ok('playing alone: one click on card 1 → c1-ban', async () => { await pg.click('#choice .opt[data-k="0"]'); await until(() => PLAY.S.seg.id === 'c1-ban'); });
 await pg.waitForTimeout(1500);
 await ok('Skip button → wait-2-ban', async () => { await ctrl('skip'); await until(() => PLAY.S.seg.id === 'wait-2-ban'); });
-await ok('click card 2 + Lock it in → c2-ban-retrain', async () => { await pg.waitForTimeout(700); await pg.click('#choice .opt[data-k="1"]'); await pg.click('#choice .lockbtn'); await until(() => PLAY.S.seg.id === 'c2-ban-retrain'); });
+await ok('second question is worded for "Ban AI"', async () => { await pg.waitForTimeout(700); const q = await pg.textContent('#choice .q .t'), o = await pg.textContent('#choice .opt[data-k="1"] .name'); if (!/banned/.test(q) || !/Make teachers mentors/i.test(o)) throw new Error(q + ' / ' + o); });
+await shot('2b-vote2-ban');
+await ok('one click on card 2 → c2-ban-retrain', async () => { await pg.click('#choice .opt[data-k="1"]'); await until(() => PLAY.S.seg.id === 'c2-ban-retrain'); });
 await pg.waitForTimeout(1200);
 await ok('+5s then −5s move the clip', async () => { const a = await pg.evaluate(() => document.querySelector('video[style*="z-index: 2"]').currentTime); await ctrl('fwd'); const b2 = await pg.evaluate(() => document.querySelector('video[style*="z-index: 2"]').currentTime); if (!(b2 > a + 3)) throw new Error(`fwd ${a}→${b2}`); await ctrl('back'); });
 await ok('Skip → 2036 film', async () => { await ctrl('skip'); await until(() => PLAY.S.seg.id === 'end-ban-retrain'); });
@@ -32,5 +34,12 @@ await ok('key M → menu, key 3 → scenario build-cut from 2026', async () => {
 await ok('scenario runs c1 → c2 without a vote', async () => { await pg.waitForTimeout(1000); await ctrl('skip'); await until(() => PLAY.S.seg.id === 'c2-build-cut'); });
 await ok('Pause button pauses and shows the keys', async () => { await ctrl('pause'); await until(() => PLAY.S.paused); });
 await pg.waitForTimeout(500); await shot('5-paused');
+await ok('room mode: votes add up and Lock it in takes the majority', async () => {
+  await ctrl('menu'); await pg.waitForTimeout(400); await pg.click('#splash .modes button[data-m="room"]'); await pg.click('#mJump'); await until(() => PLAY.S.seg && PLAY.S.seg.id === 'wait-1'); await pg.waitForTimeout(700);
+  await pg.click('#choice .opt[data-k="1"]'); await pg.click('#choice .opt[data-k="1"]'); await pg.click('#choice .opt[data-k="0"]');
+  const v = await pg.evaluate(() => PLAY.S.votes.join(',')); if (v !== '1,2') throw new Error('votes ' + v);
+  await shot('6-roomvote'); await pg.click('#choice .lockbtn'); await until(() => PLAY.S.seg.id === 'c1-build');
+});
+await ok('second question is worded for "Build AI"', async () => { await ctrl('skip'); await until(() => PLAY.S.seg.id === 'wait-2-build'); await pg.waitForTimeout(700); const q = await pg.textContent('#choice .q .t'); if (!/AI now does the explaining/.test(q)) throw new Error(q); await pg.click('#choice .lockbtn'); await pg.evaluate(() => PLAY.setVoting(false)); });
 await ok('Restart button → prologue', async () => { await ctrl('restart'); await until(() => PLAY.S.seg && PLAY.S.seg.id === 'prologue' && !PLAY.S.paused); });
 console.log(steps.join('\n')); console.log('page errors:', errs.length ? errs.join(' | ') : 'none'); await b.close(); srv.close();

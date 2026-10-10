@@ -132,9 +132,10 @@
       frame(st.id, t, st.id === 'rewind' ? st.rw : road());
       var c = ctx; c.setTransform(S, 0, 0, S, 0, 0);
       if (st.id === 'wait-1' || st.id === 'wait-2') {
-        var dec = Agamoto.company().decisions[st.id === 'wait-1' ? 0 : 1];
-        C.use(c); C.caption(dec.question, [], 1, 120, { size: 50 });
-        dec.options.forEach(function (o, i) {
+        var di = st.id === 'wait-1' ? 0 : 1, c1 = di ? st.c1 : null, dq = Agamoto.question(di, c1);
+        var opts = Agamoto.company().decisions[di].options.map(function (o) { return Agamoto.option(di, o.id, c1); });
+        C.use(c); C.caption(dq, [], 1, 120, { size: dq.length > 40 ? 42 : 50 });
+        opts.forEach(function (o, i) {
           var on = st.pick === String(i + 1), cx = 730 + i * 460;
           C.rect(cx - 210, 740, 420, 160, on ? C.PALETTE.saffron : C.PALETTE.paper, 60 + i);
           C.label((i + 1) + ' · ' + o.label, cx, 782, 30, C.PALETTE.ink, 'center');
