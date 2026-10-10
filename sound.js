@@ -17,7 +17,8 @@
   };
   // layers brought in one or two per bar (groove.js rule: kick + bass together after a quiet intro read as a startle)
   function build(nBars, peak) {
-    var L = [['padSoft', 'pluck'], ['padSoft', 'pluck', 'hat8'], ['pad', 'pluck', 'hat8', 'kick2'], ['pad', 'pluck', 'hat8', 'kick2', 'bassHalf'], ['pad', 'pluck', 'hat8', 'kick4', 'bassHalf', 'clap']];
+    // kick4 and clap enter a bar apart: together on one bar line (plus a cut's sound) they measured +6.7 dB, a startle
+    var L = [['padSoft', 'pluck'], ['padSoft', 'pluck', 'hat8'], ['pad', 'pluck', 'hat8', 'kick2'], ['pad', 'pluck', 'hat8', 'kick2', 'bassHalf'], ['pad', 'pluck', 'hat8', 'kick4', 'bassHalf'], ['pad', 'pluck', 'hat8', 'kick4', 'bassHalf', 'clap']];
     var out = []; for (var b = 0; b < nBars; b++) out.push([b, b + 1, L[Math.min(b, peak == null ? L.length - 1 : peak)]]); return out;
   }
   function soft(nBars) { var out = []; for (var b = 0; b < nBars; b++) out.push([b, b + 1, b % 2 ? ['padSoft', 'pluck'] : ['padSoft']]); return out; }
@@ -29,7 +30,8 @@
     if (id === 'c1-build') return { kit: 'keys', harmony: 'bright', key: 0, sections: build(nb, 3) };
     if (id === 'c1-ban') return { kit: 'acoustic', harmony: 'wistful', key: 0, sections: build(nb, 2) };
     if (/^home-/.test(id)) return { kit: 'keys', harmony: 'dreamy', key: road.c1 === 'ban' ? -2 : 0, sections: soft(5) };
-    if (/^c2-/.test(id)) return { kit: m.kit, harmony: m.harmony, key: m.key, sections: build(nb) };
+    // the percussion kit's kick is a low tom: four-on-the-floor toms jump out (+6.7 dB at a bar line), so it stays half-time
+    if (/^c2-/.test(id)) return { kit: m.kit, harmony: m.harmony, key: m.key, sections: m.kit === 'percussion' ? build(nb).map(function (x) { return [x[0], x[1], x[2].map(function (l) { return l === 'kick4' ? 'kick2' : l; })]; }) : build(nb) };
     if (/^mid-/.test(id)) return { kit: m.kit, harmony: m.harmony, key: m.key, sections: build(nb, 3) };
     if (/^end-/.test(id)) {
       var hard = road.ending === 'empty' || road.ending === 'smaller';
