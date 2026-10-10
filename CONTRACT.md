@@ -5,12 +5,12 @@ Read this, `collage.js`, `engine.js`, `company.json`. Never edit a file you don'
 ## Files and ownership
 | File | Owner | Notes |
 |---|---|---|
-| company.json, engine.js, collage.js, CONTRACT.md, index.html, README.md, calibrate.mjs | Lead | shared, read-only for helpers |
+| company.json, engine.js, collage.js, CONTRACT.md, story.html, README.md, calibrate.mjs | Lead | shared, read-only for helpers |
 | scenes.js | Scenes helper | classroom set (`SET`) + clips prologue, wait-1, wait-2, c1-ban, c1-build, c2-ban-cut, c2-ban-retrain, c2-build-cut, c2-build-retrain |
 | endings.js | 2036 helper | end-ban-cut, end-ban-retrain, end-build-cut, end-build-retrain, rewind |
-| play.html, render.mjs, stage.css | Stage helper | renderer + room player |
+| index.html (the player), render.mjs, stage.css | Stage helper | renderer + room player |
 
-Load order in index.html: fonts/fonts.css, engine.js, collage.js, scenes.js, endings.js.
+Load order in story.html: fonts/fonts.css, engine.js, collage.js, scenes.js, endings.js.
 
 ## Roads and clip ids (14 clips, exact lengths)
 Road id = `<c1>-<c2>`, c1 ∈ {ban, build}, c2 ∈ {cut, retrain}. Default road: **build-retrain**.
@@ -38,7 +38,7 @@ CLIPS[id] = { dur: 15, draw(ctx, t, road) { ... } };   // global var CLIPS = win
 - For prologue/wait-1 any road is passed (use only 2026). For c1-* and wait-2 the road is `<c1>-retrain`; use only years ≤ 2027.
 - Draw in world space 1920×1080. Begin with `C.use(ctx)`. Use `C.track(t, keys)` + `C.withCam(cam, fn)` for camera. Two keys at the same t = a hard cut.
 - **Never** call `ctx.setTransform`/`resetTransform`/`ctx.canvas.width` (the renderer pre-scales the context). Use save/restore. Leave `globalAlpha`, `filter`, composite op as you found them.
-- **Do not** draw grain, vignette, the HUD counters or the trust line — index.html draws those on top of every frame.
+- **Do not** draw grain, vignette, the HUD counters or the trust line — story.html draws those on top of every frame.
 - Ambient motion must be seamless at joins: use `C.amb(t, dur, phase)` (same value at t=0 and t=dur). Nothing is ever frozen: something always moves.
 - Captions: `C.caption(text, emph, p, y)`, narration in Instrument Serif italic; labels via `C.label` (Barlow Condensed, UPPERCASE).
 
@@ -66,13 +66,13 @@ SET.layout                   // { window:{x,y,w,h}, board:{x,y,w,h}, screen:{x,y
 ```
 Regions at REST (so other modules can aim callouts): window with Pune skyline x 60–600, y 110–520; blackboard x 660–1300, y 140–470; notice board x 1400–1840, y 140–470; desks/floor y 540–1040. One seated student per 50 students, one teacher figure per 4 teachers; mentors sit with small groups (`lean-in-to-group`), lecturers stand at a board (`point-at-board`); the AI "struggle map" on a screen when `ai`; skyline light changes with the year.
 
-## HUD (index.html draws it)
+## HUD (story.html draws it)
 Bottom-left counters `STUDENTS · TEACHERS · FEES · RESULTS` from `Agamoto.at(road, year(t))`, coloured by direction vs 2026 (`C.dirColor`); bottom trust line "10 futures · same luck · a fictional company · a rehearsal, not a prediction"; top-left the Eye · EYE OF AGAMOTO · VIDYA CLASSES. Keep the bottom 110 px and top-left 300×90 px free of important content.
 
-## index.html API (for render.mjs and play.html)
-- `index.html?clip=<id>&road=<roadId>&s=<scale>` plays one clip on a fixed clock, no audio. `s=0.6667` renders at 1280×720.
+## story.html API (for render.mjs and index.html (the player))
+- `story.html?clip=<id>&road=<roadId>&s=<scale>` plays one clip on a fixed clock, no audio. `s=0.6667` renders at 1280×720.
 - `window.AGAMOTO = { ready: Promise, dur(id), frame(id, t, roadId), canvas }` — `await AGAMOTO.ready; AGAMOTO.frame('prologue', 1.5, 'build-retrain')` draws that frame synchronously.
-- `index.html` alone plays the whole story live (keys 1/2 to choose, Enter to lock).
+- `story.html` alone plays the whole story live (click a card or keys 1/2 + Enter to choose, R to rewind). The room player is `index.html`; `play.html` redirects to it.
 
 ## QC
 Each helper: `node --check` its files; render 3 test frames per clip to `qc/<id>-t.jpg` (`node qc.mjs <id> <t1> <t2> <t3>` — lead provides qc.mjs) and look at them.

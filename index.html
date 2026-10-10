@@ -1,129 +1,462 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Eye of Agamoto · Vidya Classes</title>
+<title>Eye of Agamoto</title>
 <link rel="stylesheet" href="fonts/fonts.css">
-<style>html,body{margin:0;height:100%;background:#1f1b18;overflow:hidden}canvas{display:block;width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;margin:auto;position:absolute;inset:0}</style>
+<link rel="stylesheet" href="stage.css">
 </head><body>
-<canvas id="c" width="1920" height="1080"></canvas>
-<script>var CLIPS = window.CLIPS = {};</script>
+<div id="stage">
+  <video id="vA" muted playsinline preload="auto"></video>
+  <video id="vB" muted playsinline preload="auto"></video>
+  <iframe id="fb" title="live fallback"></iframe>
+  <div id="choice" class="layer"></div>
+  <div id="map" class="layer"></div>
+  <div id="compare" class="layer"></div>
+  <div id="paused" class="layer"><div class="lab">Paused</div><div class="keys ital"><kbd>1</kbd> <kbd>2</kbd> vote · <kbd>Enter</kbd> lock the choice · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div></div>
+  <div id="toast" class="lab"></div>
+  <div id="ctrl" role="toolbar" aria-label="Playback">
+    <button type="button" data-a="menu" title="Back to the menu (M)">Menu</button>
+    <button type="button" data-a="restart" title="Start the story over (R)">Restart</button>
+    <button type="button" data-a="back" title="Back 5 seconds (←)">−5s</button>
+    <button type="button" data-a="pause" id="pp" title="Pause or play (Space)">Pause</button>
+    <button type="button" data-a="fwd" title="Forward 5 seconds (→)">+5s</button>
+    <button type="button" data-a="skip" class="skip" title="Skip to the next part (N)">Skip ›</button>
+  </div>
+  <div id="splash" class="layer on">
+    <svg class="eye" viewBox="0 0 520 270" aria-hidden="true">
+      <defs><clipPath id="almond"><path d="M24 135 Q260 -35 496 135 Q260 305 24 135Z"/></clipPath></defs>
+      <path d="M24 135 Q260 -35 496 135 Q260 305 24 135Z" fill="#f4ead7"/>
+      <g clip-path="url(#almond)"><g class="iris"><circle cx="260" cy="135" r="86" fill="#e0863e"/><circle cx="260" cy="135" r="86" fill="none" stroke="#b9591c" stroke-width="10" opacity=".55"/><circle cx="260" cy="135" r="62" fill="none" stroke="#f3b36f" stroke-width="3" opacity=".7" stroke-dasharray="6 9"/><circle cx="260" cy="135" r="36" fill="#1f1b18"/><circle cx="238" cy="112" r="11" fill="#f4ead7" opacity=".92"/></g>
+      <path class="lid" d="M0 0H520V270H0Z" fill="#1d5552"/></g>
+      <path d="M24 135 Q260 -35 496 135 Q260 305 24 135Z" fill="none" stroke="#1d5552" stroke-width="15" stroke-linejoin="round"/>
+      <path d="M24 135 Q260 -35 496 135 Q260 305 24 135Z" fill="none" stroke="#2f7f7a" stroke-width="3" stroke-linejoin="round" opacity=".7" transform="translate(0 -3)"/>
+    </svg>
+    <div class="ag lab">Eye of Agamoto</div>
+    <div class="vc lab">Vidya Classes</div>
+    <div class="tag ital">Ten futures. One room. You decide.</div>
+    <div class="menu">
+      <div class="col">
+        <div class="paper go lab" id="mStart" role="button" tabindex="0"><div class="sheet" id="gosheet"></div><span>Start the story</span></div>
+        <div class="sub ital">The prologue, then the room votes twice: what to do about AI tutors, and what happens to the teachers.</div>
+        <button type="button" class="link lab" id="mJump">Skip the prologue · go to the first vote ›</button>
+      </div>
+      <div class="col">
+        <div class="h lab">Or jump into a scenario</div>
+        <div class="grid" id="mScn"></div>
+      </div>
+    </div>
+    <div class="keys ital"><b class="lab">Keyboard</b> <kbd>Enter</kbd> start · <kbd>1</kbd>–<kbd>4</kbd> pick a scenario · in the story: <kbd>1</kbd> <kbd>2</kbd> vote · <kbd>Enter</kbd> lock the choice · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div>
+  </div>
+</div>
 <script src="engine.js"></script>
-<script src="collage.js"></script>
-<script src="scenes.js"></script>
-<script src="endings.js"></script>
 <script>
 (function () {
-  var Q = new URLSearchParams(location.search), S = parseFloat(Q.get('s') || '1');
-  var cv = document.getElementById('c'); cv.width = Math.round(1920 * S); cv.height = Math.round(1080 * S);
-  var ctx = cv.getContext('2d');
-  var DURS = { prologue: 15, 'wait-1': 4, 'wait-2': 4, 'c1-ban': 15, 'c1-build': 15, rewind: 3 };
-  Agamoto.ROADS.forEach(function (r) { DURS['c2-' + r] = 15; DURS['end-' + r] = 12; });
-  function dur(id) { return (CLIPS[id] && CLIPS[id].dur) || DURS[id] || 4; }
-  // HUD year for clip time t
-  function yearAt(id, t) {
-    var d = dur(id), P = C.prog;
-    if (id === 'prologue' || id === 'wait-1') return 2026;
-    if (id === 'wait-2') return 2027;
-    if (/^c1-/.test(id)) return 2026 + C.ease(P(t, 1.5, 13.5));
-    if (/^c2-/.test(id)) return 2027 + 3 * P(t, 1, 14);
-    if (/^end-/.test(id)) return 2030 + 6 * C.easeOut(P(t, 0.05, 0.9));
-    if (id === 'rewind') return 2036 - 10 * C.ease(P(t, 0.2, 2.8));
-    return 2026;
-  }
-  function roadFor(id, roadId) {
-    var m = id.match(/^(?:c2|end)-(\w+-\w+)$/); if (m) return m[1];
-    if (/^c1-/.test(id)) return id.slice(3) + '-retrain';
-    if (id === 'wait-2' && roadId) return roadId.split('-')[0] + '-retrain';
-    return roadId || 'build-retrain';
-  }
-  function placeholder(c, id, t, road) {
-    C.use(c); c.fillStyle = C.PALETTE.cream; c.fillRect(0, 0, 1920, 1080);
-    C.rect(360, 300, 1200, 420, C.PALETTE.paper, 3, { halftone: .4 });
-    C.label('placeholder · ' + id, 960, 440, 72, C.PALETTE.saffron, 'center', 800);
-    C.caption('This clip is still being made.', [], C.clamp(t / 2), 600);
-    c.fillStyle = C.PALETTE.teal; c.fillRect(360, 760, 1200 * t / dur(id), 10);
-  }
-  function hud(c, id, t, road) {
-    var y = yearAt(id, t), v = Agamoto.at(road, y), s0 = road.counters[2026];
-    C.use(c); c.save();
-    // brand
-    C.paper(C.torn(28, 24, 330, 70, 41, 3), C.PALETTE.paper, { lift: 4 });
-    // the Eye: an almond with a saffron iris that slowly looks around
-    var ex = 72, ey = 59, look = Math.sin(t * 1.3) * 4;
-    c.save(); c.beginPath(); c.moveTo(ex - 30, ey); c.quadraticCurveTo(ex, ey - 26, ex + 30, ey); c.quadraticCurveTo(ex, ey + 26, ex - 30, ey); c.closePath();
-    c.fillStyle = C.PALETTE.cream; c.fill(); c.lineWidth = 3.5; c.strokeStyle = C.PALETTE.tealDark; c.stroke(); c.clip();
-    c.fillStyle = C.PALETTE.saffron; c.beginPath(); c.arc(ex + look, ey, 10.5, 0, 6.283); c.fill();
-    c.fillStyle = C.PALETTE.ink; c.beginPath(); c.arc(ex + look, ey, 4.5, 0, 6.283); c.fill(); c.restore();
-    C.label('Eye of Agamoto', 116, 48, 24, C.PALETTE.ink, 'left', 800);
-    C.label('Vidya Classes', 116, 74, 19, C.PALETTE.inkSoft, 'left', 500);
-    // counters
-    var items = [['Students', Math.round(v.students).toLocaleString('en-IN'), v.students - s0.students, 20],
-                 ['Teachers', Math.round(v.teachers), v.teachers - s0.teachers, 1],
-                 ['Fees', '₹' + (Math.round(v.fees / 500) * 500).toLocaleString('en-IN'), s0.fees - v.fees, 400],
-                 ['Results', Math.round(v.results), v.results - s0.results, 1]];
-    C.paper(C.torn(28, 930, 760, 92, 43, 3), 'rgba(251,245,232,0.94)', { lift: 4 });
-    C.label(String(Math.round(y)), 52, 976, 44, C.PALETTE.ink, 'left', 800);
-    items.forEach(function (it, i) {
-      var x = 170 + i * 152; C.label(it[0], x, 956, 18, C.PALETTE.inkSoft, 'left', 500);
-      C.label(it[1], x, 990, 34, C.dirColor(it[2], it[3]), 'left', 800);
-    });
-    // trust line
-    c.font = 'italic 25px ' + C.FONTS.serif; var tl = '10 futures · same luck · a fictional company · a rehearsal, not a prediction', tw = c.measureText(tl).width;
-    c.fillStyle = 'rgba(31,27,24,0.78)'; c.fillRect(1892 - tw - 24, 1030, tw + 40, 40);
-    c.fillStyle = '#f4ead7'; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(tl, 1898, 1051);
-    c.restore();
-  }
-  function frame(id, t, roadId) {
-    var road = Agamoto.road(roadFor(id, roadId)), d = dur(id); t = Math.max(0, Math.min(d, t));
-    ctx.setTransform(S, 0, 0, S, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = '#f4ead7'; ctx.fillRect(0, 0, 1920, 1080);
-    C.use(ctx);
-    try { if (CLIPS[id]) { ctx.save(); CLIPS[id].draw(ctx, t, road); ctx.restore(); } else placeholder(ctx, id, t, road); }
-    catch (e) { ctx.restore && ctx.restore(); placeholder(ctx, id + ' (error: ' + e.message + ')', t, road); console.error(e); }
-    ctx.setTransform(S, 0, 0, S, 0, 0); C.use(ctx);
-    C.vignette(0.42); if (!Q.get('nograin')) C.grain(t, 0.45); hud(ctx, id, t, road);
-  }
-  var ready = fetch('company.json').then(function (r) { return r.json(); }).then(function (co) { Agamoto.init(co); return document.fonts.load('italic 40px "Instrument Serif"'); })
-    .then(function () { return Promise.all([document.fonts.load('700 30px "Barlow Condensed"'), document.fonts.load('800 30px "Barlow Condensed"'), document.fonts.load('500 30px "Barlow Condensed"')]); });
-  window.AGAMOTO = { ready: ready, dur: dur, frame: frame, canvas: cv, yearAt: yearAt, roadFor: roadFor };
+'use strict';
+var $ = function (s) { return document.querySelector(s); };
+var stage = $('#stage'), V = [$('#vA'), $('#vB')], fb = $('#fb'), ci = 0;
+var RD0 = 'build-retrain', ROWS = ['ban-cut', 'ban-retrain', 'build-cut', 'build-retrain'];
+var SHORT = { ban: 'Ban AI', build: 'Build AI', cut: 'Cut staff', retrain: 'Retrain' };
+var CO = null, D = null;
+var S = { tok: 0, seg: null, mode: 'main', room: { c1: null, c2: null }, roomRoad: RD0, shown: RD0, tried: null, tries: {}, paused: false, ended: false,
+  votes: [0, 0], choiceOpen: -1, locked: false, cd: 0, fbOn: false, fbT: 0, prevT: 0, fromRect: [null, null], anims: [], hover: null, started: false, endFired: -1 };
 
-  // ---- live playback ----
-  var clipQ = Q.get('clip'), roadQ = Q.get('road') || 'build-retrain';
-  ready.then(function () {
-    if (Q.get('static')) return;
-    if (clipQ) { var t0 = performance.now(); (function loop() { var t = ((performance.now() - t0) / 1000) % dur(clipQ); frame(clipQ, t, roadQ); requestAnimationFrame(loop); })(); return; }
-    // whole story live: prologue → wait-1 (1/2, Enter) → c1 → wait-2 → c2 → end → (R rewinds to the other first choice)
-    var st = { id: 'prologue', t0: performance.now(), c1: 'build', c2: 'retrain', pick: null, stage: 0 };
-    function go(id) { st.id = id; st.t0 = performance.now(); }
-    function road() { return st.c1 + '-' + st.c2; }
-    addEventListener('keydown', function (e) {
-      if (e.key === '1' || e.key === '2') st.pick = e.key;
-      if (e.key === 'Enter') {
-        if (st.id === 'wait-1') { st.c1 = st.pick === '1' ? 'ban' : 'build'; go('c1-' + st.c1); }
-        else if (st.id === 'wait-2') { st.c2 = st.pick === '1' ? 'cut' : 'retrain'; go('c2-' + road()); }
-        st.pick = null;
-      }
-      if (e.key === 'r' || e.key === 'R') { st.rw = road(); go('rewind'); }
-    });
-    (function loop() {
-      var t = (performance.now() - st.t0) / 1000, d = dur(st.id);
-      if (t >= d) {
-        var next = { prologue: 'wait-1', 'wait-1': 'wait-1', 'wait-2': 'wait-2' }[st.id];
-        if (/^c1-/.test(st.id)) next = 'wait-2';
-        else if (/^c2-/.test(st.id)) next = 'end-' + road();
-        else if (/^end-/.test(st.id)) next = null;
-        else if (st.id === 'rewind') { st.c1 = st.c1 === 'build' ? 'ban' : 'build'; next = 'c1-' + st.c1; }
-        if (next) { go(next); t = 0; } else t = d;
-      }
-      frame(st.id, t, st.id === 'rewind' ? st.rw : road());
-      var c = ctx; c.setTransform(S, 0, 0, S, 0, 0);
-      if (st.id === 'wait-1' || st.id === 'wait-2') {
-        var dec = Agamoto.company().decisions[st.id === 'wait-1' ? 0 : 1];
-        C.use(c); C.caption(dec.question, [], 1, 120, { size: 50 });
-        dec.options.forEach(function (o, i) { var on = st.pick === String(i + 1); C.rect(560 + i * 440, 760, 400, 120, on ? C.PALETTE.saffron : C.PALETTE.paper, 60 + i); C.label((i + 1) + ' · ' + o.label, 760 + i * 440, 800, 28, C.PALETTE.ink, 'center'); c.font = 'italic 22px ' + C.FONTS.serif; c.fillStyle = C.PALETTE.inkSoft; c.textAlign = 'center'; c.fillText(o.consequence.slice(0, 44), 760 + i * 440, 846); });
-      }
-      requestAnimationFrame(loop);
-    })();
+/* ---------- stage scaling ---------- */
+function fit() { var s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')'; }
+addEventListener('resize', fit); fit();
+var idleT; function wake() { document.body.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(function () { document.body.classList.add('idle'); }, 2600); }
+addEventListener('mousemove', wake); addEventListener('pointerdown', wake);
+
+/* ---------- torn paper ---------- */
+function torn(w, h, seed, j) {
+  var s = seed * 9301 + 49297; function r() { s = (s * 16807) % 2147483647; return s / 2147483647; }
+  var pts = [], step = 22; j = j || 5;
+  var P = function (x, y) { pts.push((x / w * 100).toFixed(2) + '% ' + (y / h * 100).toFixed(2) + '%'); };
+  for (var x = 0; x <= w; x += step) P(x, r() * j);
+  for (var y = step; y <= h; y += step) P(w - r() * j, y);
+  for (x = w; x >= 0; x -= step) P(x, h - r() * j);
+  for (y = h - step; y > 0; y -= step) P(r() * j, y);
+  return 'polygon(' + pts.join(',') + ')';
+}
+function paper(cls, x, y, w, h, html, seed, o) {
+  o = o || {}; var d = document.createElement('div'); d.className = 'paper ' + cls;
+  d.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;' + (o.style || '');
+  d.innerHTML = '<div class="sheet" style="clip-path:' + torn(w, h, seed || 3, o.j) + ';-webkit-clip-path:' + torn(w, h, seed || 3, o.j) + '"></div><div class="in">' + (html || '') + '</div>' + (o.tape ? '<i class="tape a"></i>' : '');
+  return d;
+}
+function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+var toastT; function toast(m) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2200); }
+function layer(id, on) { $(id).classList[on ? 'add' : 'remove']('on'); }
+
+/* ---------- audio (all synthesised) ---------- */
+var AC = null, MG = null, NB = null;
+function audioInit() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)(); MG = AC.createGain(); MG.gain.value = .75; MG.connect(AC.destination);
+    NB = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate); var d = NB.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  } catch (e) { AC = null; }
+}
+function env(g, t, a, peak, dec) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
+function whoosh() {
+  if (!AC) return; var t = AC.currentTime, s = AC.createBufferSource(); s.buffer = NB; var f = AC.createBiquadFilter(), g = AC.createGain();
+  f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(260, t); f.frequency.exponentialRampToValueAtTime(3400, t + .42);
+  env(g, t, .16, .42, .36); s.connect(f); f.connect(g); g.connect(MG); s.start(t); s.stop(t + .7);
+}
+function tick(strong) {
+  if (!AC) return; var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'triangle'; o.frequency.value = strong ? 1900 : 1250; env(g, t, .004, strong ? .16 : .08, .05); o.connect(g); g.connect(MG); o.start(t); o.stop(t + .1);
+}
+function thud() {
+  if (!AC) return; var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(34, t + .32); env(g, t, .006, .95, .5); o.connect(g); g.connect(MG); o.start(t); o.stop(t + .6);
+  var s = AC.createBufferSource(), f = AC.createBiquadFilter(), g2 = AC.createGain(); s.buffer = NB; f.type = 'lowpass'; f.frequency.value = 380; env(g2, t, .004, .55, .16); s.connect(f); f.connect(g2); g2.connect(MG); s.start(t); s.stop(t + .3);
+}
+function chime() {
+  if (!AC) return; var t = AC.currentTime;
+  [784, 1175, 1568, 2349].forEach(function (fr, i) { var o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = fr; env(g, t + i * .09, .01, .13 / (1 + i * .5), 1.8); o.connect(g); g.connect(MG); o.start(t + i * .09); o.stop(t + 2.2 + i * .09); });
+}
+
+/* ---------- segments ---------- */
+var durOf = function (id) { return id === 'prologue' ? 15 : /^wait/.test(id) ? 4 : /^end/.test(id) ? 12 : /^rewind/.test(id) ? 3 : 15; };
+function mk(id, road, o) { return Object.assign({ id: id, clip: id, road: road, src: 'clips/' + id + '.mp4', dur: durOf(id), loop: false, next: null, onStart: null, onEnd: null }, o || {}); }
+var segPrologue = function () { return mk('prologue', RD0, { next: segWait1 }); };
+var segWait1 = function () { return mk('wait-1', RD0, { loop: true, next: segWait1, onStart: function () { openChoice(0); } }); };
+var segWait2 = function (c1) { return mk('wait-2-' + c1, c1 + '-retrain', { clip: 'wait-2', loop: true, next: function () { return segWait2(c1); }, onStart: function () { openChoice(1); } }); };
+var segC1 = function (c1) { return mk('c1-' + c1, c1 + '-retrain', { onStart: function () { flyCard(0, c1); }, next: function () { return S.mode === 'main' ? segWait2(c1) : segC2(S.mode === 'try' ? S.tried : S.roomRoad); } }); };
+var segC2 = function (road) { return mk('c2-' + road, road, { onStart: function () { flyCard(1, road.split('-')[1]); }, next: function () { return segEnd(road); } }); };
+var segEnd = function (road) { return mk('end-' + road, road, { onStart: function () { S.shown = road; chime(); }, onEnd: function () { setTimeout(S.mode === 'try' ? showCompare : showMap, 500); } }); };
+var segRewind = function (road) { return mk('rewind-' + road, road, { clip: 'rewind', next: function () { return segC1(S.tried.split('-')[0]); } }); };
+
+/* ---------- double-buffered video ---------- */
+var cur = function () { return V[ci]; }, hid = function () { return V[1 - ci]; };
+function prep(v, seg) {
+  if (v._key === seg.src) return v._p;
+  v._key = seg.src;
+  v._p = new Promise(function (res) {
+    var done = false, to;
+    function fin(r) { if (done) return; done = true; clearTimeout(to); v.removeEventListener('loadeddata', ok); v.removeEventListener('error', bad); res(r); }
+    function ok() { fin('ok'); } function bad() { fin('fail'); }
+    to = setTimeout(function () { fin('fail'); }, 7000);
+    v.addEventListener('loadeddata', ok); v.addEventListener('error', bad);
+    v.pause(); v.preload = 'auto'; v.muted = true; v.src = seg.src; v.load();
   });
+  return v._p;
+}
+function preloadNext(seg) { var nx = seg.next && seg.next(); if (nx) prep(hid(), nx); }
+function startSeg(seg) {
+  var tok = ++S.tok, v = hid();
+  return prep(v, seg).then(function (r) {
+    if (tok !== S.tok) return;
+    var prev = S.seg; S.seg = seg; S.ended = false; S.prevT = 0; S.thud = false;
+    var same = prev && prev.id === seg.id && seg.loop;
+    if (r === 'fail') { v._key = null; playFallback(seg, tok, same); return; }
+    var old = cur();
+    if (v.currentTime > 0.05) v.currentTime = 0;
+    v.style.zIndex = 2; old.style.zIndex = 1;
+    var p = v.play(); if (p && p.catch) p.catch(function () {});
+    ci = 1 - ci; S.fbOn = false; fb.style.display = 'none';
+    var done = function () { if (cur() !== old) { old.pause(); try { old.currentTime = 0; } catch (e) {} } if (S.fbSrc) { fb.src = 'about:blank'; S.fbSrc = null; } };
+    if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(done); else setTimeout(done, 80);
+    if (!same) { whoosh(); if (seg.onStart) seg.onStart(seg); }
+    watchEnd(v, tok);
+    preloadNext(seg);
+    if (S.paused) { v.pause(); }
+  });
+}
+function watchEnd(v, tok) {
+  var chk = function (now, meta) {
+    if (tok !== S.tok || v !== cur()) return;
+    var d = v.duration || S.seg.dur;
+    if (meta && meta.mediaTime >= d - 1.6 / 30) fireEnd(tok); else v.requestVideoFrameCallback(chk);
+  };
+  if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(chk);
+  v.onended = function () { fireEnd(tok); };
+}
+function fireEnd(tok) {
+  if (tok !== S.tok || S.endFired === tok || !S.seg) return; S.endFired = tok; S.ended = true;
+  var seg = S.seg; if (seg.onEnd) seg.onEnd();
+  var nx = seg.next && seg.next(); if (nx) startSeg(nx);
+}
+function playFallback(seg, tok, same) {
+  var old = cur(); S.fbOn = true; S.fbT = 0; S.fbSrc = 'story.html?clip=' + seg.clip + '&road=' + seg.road;
+  if (!same || fb.style.display !== 'block') { fb.src = S.fbSrc; }
+  fb.style.display = 'block'; fb.style.zIndex = 3;
+  old.pause(); if (!same) { whoosh(); if (seg.onStart) seg.onStart(seg); }
+  if (!S.fbToast) { S.fbToast = 1; toast('clip missing \u00b7 playing live'); }
+}
+
+/* ---------- main loop: countdown, fallback clock, stamp thud ---------- */
+var lastNow = performance.now();
+function loop(now) {
+  var dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+  if (!S.paused && S.started) {
+    if (S.choiceOpen >= 0 && !S.locked && S.cdOn) {
+      var before = Math.ceil(10 - S.cd); S.cd += dt; var left = 10 - S.cd, after = Math.ceil(left);
+      var fill = $('#choice .fill'), secs = $('#choice .secs');
+      if (fill) { fill.style.transform = 'scaleX(' + Math.max(0, left / 10) + ')'; fill.style.background = left < 3 ? 'var(--coral)' : 'var(--teal)'; }
+      if (secs) secs.textContent = Math.max(0, Math.ceil(left));
+      if (after !== before && left > 0) tick(left <= 3);
+      if (left <= 0) lockChoice();
+    }
+    var ct;
+    if (S.fbOn) { S.fbT += dt; ct = S.fbT; if (S.seg && !S.seg.loop && ct >= S.seg.dur && S.endFired !== S.tok) fireEnd(S.tok); }
+    else ct = cur().currentTime;
+    if (S.seg && /^end-/.test(S.seg.id) && !S.thud && S.prevT < 7.4 && ct >= 7.4 && ct - S.prevT < 0.6) { S.thud = true; thud(); }
+    S.prevT = ct;
+    if (!S.fbOn && S.seg && !S.ended && !cur().paused && cur().duration && ct >= cur().duration - 1 / 30) fireEnd(S.tok);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- choice overlay ---------- */
+var OPTX = [430, 970], OPTY = 704, OPTR = [-1.4, 1.1];
+function openChoice(i) {
+  if (S.choiceOpen === i) return;
+  S.choiceOpen = i; S.votes = [0, 0]; S.locked = false; S.cd = 0; S.cdOn = false; S.mode = 'main';
+  var dec = D[i], el = $('#choice'); el.innerHTML = '';
+  var q = paper('q', 420, 556, 1080, 124, '<div class="t ital">' + esc(dec.question) + '</div>', 11 + i, { tape: true });
+  q.innerHTML += '<div class="yr lab">' + dec.year + ' · choice ' + (i + 1) + ' of 2</div>';
+  q.querySelector('.in').firstChild.style.color = 'var(--ink)';
+  el.appendChild(q);
+  dec.options.forEach(function (o, k) {
+    var t2 = i === 1;
+    var c = paper('opt' + (t2 ? ' t2' : ''), OPTX[k], OPTY, 520, 200,
+      '<div class="key">' + (k + 1) + '</div><div class="name lab" style="font-size:40px;line-height:.98;' + (t2 ? 'color:var(--paper)' : '') + '">' + esc(o.label) + '</div><div class="cons ital"' + (t2 ? ' style="color:#e7f2ef"' : '') + '>' + esc(o.consequence) + '</div>' +
+      '<div class="votes"><b>0</b><i>votes</i></div>', 31 + i * 7 + k, { tape: true });
+    c.style.setProperty('--r', OPTR[k] + 'deg'); c.style.transform = 'rotate(' + OPTR[k] + 'deg)';
+    c.querySelector('.sheet').style.backgroundColor = t2 ? 'var(--teal)' : 'var(--saffron)';
+    c.dataset.k = k; c.addEventListener('click', function () { vote(k); });
+    el.appendChild(c);
+  });
+  el.appendChild(paper('bar', 830, 938, 660, 34, '<div class="fill" style="left:8px;top:8px;right:8px;bottom:8px;position:absolute"></div>', 77, { j: 3 }));
+  var lb = paper('lockbtn lab', 1600, 920, 270, 70, '<span>Lock it in ›</span>', 88, { j: 3 }); lb.title = 'Lock the choice (Enter)'; lb.addEventListener('click', function () { lockChoice(); }); el.appendChild(lb);
+  var hint = document.createElement('div'); hint.className = 'hint ital'; hint.textContent = 'Click a card or press 1 / 2 to vote · Enter or Lock it in to go on'; el.appendChild(hint);
+  var secs = document.createElement('div'); secs.className = 'secs'; secs.textContent = '10'; el.appendChild(secs);
+  layer('#choice', true); setTimeout(function () { S.cdOn = true; }, 500);
+}
+function vote(k) {
+  if (S.choiceOpen < 0 || S.locked || S.paused) return; S.votes[k]++;
+  var cards = document.querySelectorAll('#choice .opt');
+  cards.forEach(function (c, j) { var v = c.querySelector('.votes'); v.querySelector('b').textContent = S.votes[j]; if (j === k) { v.classList.remove('bump'); void v.offsetWidth; v.classList.add('bump'); } c.classList.toggle('lead', S.votes[j] > S.votes[1 - j]); c.classList.toggle('trail', S.votes[j] < S.votes[1 - j]); });
+  tick(true);
+}
+function lockChoice() {
+  if (S.choiceOpen < 0 || S.locked) return; S.locked = true;
+  var i = S.choiceOpen, k = S.votes[0] > S.votes[1] ? 0 : 1; // tie -> option 2
+  var opt = D[i].options[k]; S.fromRect[i] = { x: OPTX[k], y: OPTY, w: 520, h: 200, rot: OPTR[k] };
+  var cards = document.querySelectorAll('#choice .opt'); cards.forEach(function (c, j) { c.classList.toggle('lead', j === k); });
+  if (i === 0) { S.room.c1 = opt.id; S.roomRoad = opt.id + '-retrain'; startSeg(segC1(opt.id)); }
+  else { S.room.c2 = opt.id; S.roomRoad = S.room.c1 + '-' + opt.id; S.mode = 'main'; startSeg(segC2(S.roomRoad)); }
+}
+function closeChoice(k) {
+  var cards = document.querySelectorAll('#choice .opt'); cards.forEach(function (c, j) { c.classList.add(j === k ? 'picked' : 'gone'); });
+  layer('#choice', false); setTimeout(function () { S.choiceOpen = -1; }, 400);
+}
+
+/* ---------- card flies into the frame ---------- */
+var SLOT = [{ cx: 1610, cy: 235, rot: -3, col: 'var(--saffron)', fg: 'var(--ink)' }, { cx: 1610, cy: 375, rot: 2, col: 'var(--teal)', fg: 'var(--paper)' }];
+function flyCard(i, optId) {
+  var o = D[i].options.filter(function (x) { return x.id === optId; })[0], from = S.fromRect[i] || { x: 700, y: 560, w: 520, h: 200, rot: 0 }, sl = SLOT[i];
+  if (S.choiceOpen === i) closeChoice(D[i].options.indexOf(o));
+  var el = paper('fly', 0, 0, 520, 200,
+    '<div class="name lab" style="color:' + sl.fg + '">' + esc(o.label) + '</div><div class="cons ital" style="color:' + (i ? '#e7f2ef' : 'var(--ink-soft)') + '">' + esc(o.consequence) + '</div>', 5 + i, { j: 4 });
+  el.style.width = from.w + 'px'; el.style.height = from.h + 'px'; el.querySelector('.sheet').style.backgroundColor = sl.col;
+  stage.appendChild(el);
+  var tf = function (x, y, r) { return 'translate(' + x + 'px,' + y + 'px) rotate(' + r + 'deg)'; };
+  var ease = 'cubic-bezier(.55,.05,.25,1)', dur = 600;
+  var a1 = el.animate([{ width: from.w + 'px', height: from.h + 'px', transform: tf(from.x, from.y, from.rot) },
+    { offset: .12, width: from.w + 'px', height: from.h + 'px', transform: tf(from.x, from.y - 26, from.rot - 1) },
+    { width: '360px', height: '120px', transform: tf(sl.cx - 180, sl.cy - 60, sl.rot) }], { duration: dur, easing: ease, fill: 'forwards' });
+  var nm = el.querySelector('.name'), cs = el.querySelector('.cons');
+  var a2 = nm.animate([{ fontSize: '40px' }, { fontSize: '36px' }], { duration: dur, easing: ease, fill: 'forwards' });
+  var a3 = cs.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur * .6, fill: 'forwards' });
+  S.anims = [a1, a2, a3]; if (S.paused) S.anims.forEach(function (a) { a.pause(); });
+  a1.onfinish = function () { el.remove(); S.anims = []; };
+}
+
+/* ---------- what-if map ---------- */
+var CX = { start: [60, 200], c1: [330, 320], c2: [760, 320], tile: [1190, 660] }, RY = [342, 512, 692, 862];
+function tileRect(r) { var y = RY[ROWS.indexOf(r)]; return { x: CX.tile[0], y: y - 82, w: CX.tile[1], h: 164 }; }
+function c2Rect(r) { var y = RY[ROWS.indexOf(r)]; return { x: CX.c2[0], y: y - 52, w: CX.c2[1], h: 104 }; }
+function c1Rect(c1) { var a = c1 === 'ban' ? 0 : 2, y = (RY[a] + RY[a + 1]) / 2; return { x: CX.c1[0], y: y - 52, w: CX.c1[1], h: 104 }; }
+function optLabel(di, id) { return D[di].options.filter(function (o) { return o.id === id; })[0].label; }
+function pathD(a, b) { var x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2, m = (x1 + x2) / 2; return 'M' + x1 + ',' + y1 + ' C' + m + ',' + y1 + ' ' + m + ',' + y2 + ' ' + x2 + ',' + y2; }
+function buildMap() {
+  var el = $('#map'); el.innerHTML = '';
+  var start = { x: CX.start[0], y: 540 - 60, w: CX.start[1], h: 120 };
+  var svg = '<svg viewBox="0 0 1920 1080">';
+  var segs = [];
+  ['ban', 'build'].forEach(function (c1) { segs.push({ key: 'c1:' + c1, d: pathD(start, c1Rect(c1)), roads: ROWS.filter(function (r) { return r.indexOf(c1) === 0; }) }); });
+  ROWS.forEach(function (r) { segs.push({ key: 'c2:' + r, d: pathD(c1Rect(r.split('-')[0]), c2Rect(r)), roads: [r] }); segs.push({ key: 't:' + r, d: pathD(c2Rect(r), tileRect(r)), roads: [r] }); });
+  segs.forEach(function (s) { svg += '<path data-roads="' + s.roads.join(' ') + '" d="' + s.d + '" fill="none" stroke-linecap="round"/>'; });
+  el.insertAdjacentHTML('beforeend', svg + '</svg>');
+  var t = document.createElement('div'); t.className = 'ttl'; t.innerHTML = '<div class="big lab">What if?</div><div class="sub ital">Same luck, different road. Pick one and rewind into it.</div>'; el.appendChild(t);
+  [['2026 · first choice', CX.c1], ['2027 · second choice', CX.c2], ['2036 · where it ends', [CX.tile[0], CX.tile[1]]]].forEach(function (h) {
+    var d = document.createElement('div'); d.className = 'colh lab'; d.style.left = (h[1][0] + (h[1][1] - 360) / 2) + 'px'; d.textContent = h[0]; el.appendChild(d); });
+  var st = paper('node start', start.x, start.y, start.w, start.h, '<div class="k lab">2026</div><div class="n lab" style="font-size:34px">Vidya Classes</div>', 61); st.querySelector('.sheet').style.backgroundColor = 'var(--cream)'; el.appendChild(st);
+  ['ban', 'build'].forEach(function (c1, i) {
+    var r = c1Rect(c1), n = paper('node c1', r.x, r.y, r.w, r.h, '<div class="k lab">AI tutors</div><div class="n lab" style="font-size:31px">' + esc(optLabel(0, c1)) + '</div>', 70 + i);
+    n.dataset.c1 = c1; n.dataset.roads = ROWS.filter(function (q) { return q.indexOf(c1) === 0; }).join(' '); el.appendChild(n);
+  });
+  ROWS.forEach(function (rd, i) {
+    var c2 = rd.split('-')[1], r = c2Rect(rd), n = paper('node c2', r.x, r.y, r.w, r.h, '<div class="k lab">The teachers</div><div class="n lab" style="font-size:31px">' + esc(optLabel(1, c2)) + '</div>', 80 + i);
+    n.dataset.road = rd; el.appendChild(n);
+    var info = Agamoto.road(rd), E = info.endingInfo, cnt = info.endings[info.ending], tone = E.tone === 'good' ? 'var(--teal)' : E.tone === 'hard' ? 'var(--coral)' : 'var(--mustard)';
+    var tr = tileRect(rd), pips = ''; for (var p = 0; p < 10; p++) pips += '<s class="' + (p < cnt ? 'on' : '') + '"></s>';
+    var tl = paper('tile', tr.x, tr.y, tr.w, tr.h, '<div class="bar"></div><div class="k lab"><span>2036 · most common ending</span></div><div class="e ital">' + esc(E.label) + '</div><div class="of ital"><b>' + cnt + ' of 10</b> futures<div class="pips">' + pips + '</div></div>', 90 + i);
+    tl.style.setProperty('--tone', tone); tl.dataset.road = rd; el.appendChild(tl);
+  });
+  var f = document.createElement('div'); f.className = 'foot ital'; f.innerHTML = 'Click a road, or press <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> &nbsp;·&nbsp; <kbd>R</kbd> starts over'; el.appendChild(f);
+  el.querySelectorAll('[data-road],[data-c1]').forEach(function (n) {
+    var road = function () { return n.dataset.road || (n.dataset.c1 + '-' + S.room.c2); };
+    n.addEventListener('mouseenter', function () { S.hover = road(); paintMap(); }); n.addEventListener('mouseleave', function () { S.hover = null; paintMap(); });
+    n.addEventListener('click', function () { chooseRoad(road()); });
+  });
+  paintMap();
+}
+function paintMap() {
+  var el = $('#map'), room = S.roomRoad, c1r = room.split('-')[0];
+  el.querySelectorAll('path').forEach(function (p) {
+    var rs = p.dataset.roads.split(' '), lit = rs.indexOf(room) >= 0, hov = S.hover && rs.indexOf(S.hover) >= 0, tried = S.tried && rs.indexOf(S.tried) >= 0 && !lit;
+    p.setAttribute('stroke', lit ? '#e0863e' : hov ? '#f4ead7' : tried ? '#7cc0b9' : '#6b5f50'); p.setAttribute('stroke-width', lit ? 11 : hov ? 8 : 5); p.setAttribute('stroke-dasharray', lit || hov ? '' : '2 12');
+    p.setAttribute('opacity', lit ? 1 : hov ? 1 : .85);
+  });
+  el.querySelectorAll('.tile,.node.c2').forEach(function (n) { var r = n.dataset.road; n.classList.toggle('lit', r === room); n.classList.toggle('dim', r !== room && !!S.hover && S.hover !== r); n.classList.toggle('hover', S.hover === r && r !== room); });
+  el.querySelectorAll('.node.c1').forEach(function (n) { n.classList.toggle('lit', n.dataset.c1 === c1r); });
+  el.querySelectorAll('.you').forEach(function (n) { n.remove(); });
+  var tile = el.querySelector('.tile[data-road="' + room + '"]'); if (tile) tile.insertAdjacentHTML('beforeend', '<div class="you lab">Your room\'s road</div>');
+  ROWS.forEach(function (r) { if (S.tries[r] && r !== room) { var t = el.querySelector('.tile[data-road="' + r + '"]'); if (t && !t.querySelector('.youtry')) t.insertAdjacentHTML('beforeend', '<div class="you youtry lab" style="background:var(--teal);color:var(--paper)">Tried</div>'); } });
+}
+function showMap() { S.mapOn = true; buildMap(); layer('#map', true); }
+function chooseRoad(r) {
+  if (!S.mapOn) return;
+  if (r === S.roomRoad) { toast('That is your room\'s road. Pick another to compare.'); return; }
+  S.mapOn = false; S.tried = r; S.tries[r] = true; S.mode = 'try'; layer('#map', false);
+  var c1 = r.split('-')[0], c2 = r.split('-')[1], a = c1Rect(c1), b = c2Rect(r);
+  S.fromRect = [{ x: a.x, y: a.y, w: a.w, h: a.h, rot: 0 }, { x: b.x, y: b.y, w: b.w, h: b.h, rot: 0 }];
+  startSeg(segRewind(S.shown));
+}
+
+/* ---------- compare card ---------- */
+var fmtN = function (n) { return Math.abs(Math.round(n)).toLocaleString('en-IN'); };
+var sg = function (n) { return n > 0 ? '+' : n < 0 ? '−' : '±'; };
+var dirC = function (d, eps) { return Math.abs(d) < eps ? 'var(--blue)' : d > 0 ? 'var(--green)' : 'var(--amber)'; };
+function roadName(r) { var p = r.split('-'); return SHORT[p[0]] + ' → ' + SHORT[p[1]]; }
+function endLabel(id) { return CO.endings.filter(function (e) { return e.id === id; })[0].label; }
+function showCompare() {
+  var cmp = Agamoto.compare(S.roomRoad, S.tried), d = cmp.same.delta, el = $('#compare'); el.innerHTML = '';
+  var stu = Math.round(d.students / 10) * 10, tea = Math.round(d.teachers), res = d.results, fee = d.fees;
+  var arrow = Math.abs(res) < 0.5 ? '→' : res > 0 ? '↑' : '↓';
+  var card = paper('card', 290, 92, 1340, 896, '', 55, { j: 6, tape: true }), inn = card.querySelector('.in');
+  inn.innerHTML = '<div class="eyebrow lab">Same luck · two roads</div>' +
+    '<div class="vs"><div class="rd ital"><small>Your room\'s road</small><span class="nm">' + esc(roadName(S.roomRoad)) + '</span></div><div class="arrow">→</div><div class="rd try ital"><small>The road you just tried</small><span class="nm">' + esc(roadName(S.tried)) + '</span></div></div>' +
+    '<div class="big"><span>≈ ' + sg(stu) + fmtN(stu) + ' students</span><span class="dot">·</span><span>' + sg(tea) + fmtN(tea) + ' teachers</span><span class="dot">·</span><span>results ' + arrow + '</span></div>' +
+    '<div class="ln ital">by 2036, against your room\'s road, with exactly the same luck</div>' +
+    '<div class="aff">' +
+    aff('Students', sg(stu) + fmtN(stu), stu > 0 ? 'more join' : stu < 0 ? 'fewer join' : 'about the same', dirC(stu, 20)) +
+    aff('Teachers', sg(tea) + fmtN(tea), tea > 0 ? 'more on staff' : tea < 0 ? 'fewer on staff' : 'about the same', dirC(tea, 1)) +
+    aff('Families\' fees', sg(fee) + '₹' + fmtN(fee), fee < 0 ? 'cheaper per year' : fee > 0 ? 'dearer per year' : 'about the same', dirC(-fee, 400)) + '</div>' +
+    '<div class="endnote ital">In that same future: ' + esc(endLabel(cmp.endingA)) + ' → <b style="font-weight:400;color:var(--saffron)">' + esc(endLabel(cmp.endingB)) + '</b></div>';
+  var back = paper('back lab', 0, 0, 340, 64, '', 41, { j: 3 }); back.style.cssText += 'position:absolute;left:auto;top:auto;right:48px;bottom:26px;width:340px;height:64px'; back.querySelector('.in').innerHTML = '<span style="position:relative;font-size:30px;display:block;text-align:center;line-height:48px">Back to the map →</span>';
+  back.addEventListener('click', backToMap); inn.appendChild(back);
+  el.appendChild(card); S.cmpOn = true; layer('#compare', true);
+}
+function aff(k, v, sub, col) { return '<div class="paper af" style="--dc:' + col + '"><div class="sheet" style="clip-path:' + torn(380, 250, 9 + k.length, 4) + '"></div><div class="in"><div class="k lab">' + esc(k) + '</div><div class="v" style="color:' + col + '">' + v + '</div><div class="d ital">' + sub + '</div></div><div class="mark" style="clip-path:inset(0)"></div></div>'; }
+function backToMap() { if (!S.cmpOn) return; S.cmpOn = false; layer('#compare', false); S.mode = 'main'; setTimeout(showMap, 350); }
+
+/* ---------- controls ---------- */
+function setPaused(p) {
+  S.paused = p; layer('#paused', p); document.body.classList.toggle('paused', p); $('#pp').textContent = p ? 'Play' : 'Pause';
+  if (!S.fbOn) { if (p) cur().pause(); else if (!S.ended) { var pr = cur().play(); if (pr && pr.catch) pr.catch(function () {}); } }
+  S.anims.forEach(function (a) { p ? a.pause() : a.play(); });
+}
+function seekBy(sec) {
+  if (S.fbOn || S.ended || S.mapOn || S.cmpOn) return; var v = cur(); if (!v.duration) return;
+  v.currentTime = Math.max(0, Math.min(v.duration - 0.25, v.currentTime + sec)); S.prevT = v.currentTime;
+}
+function skip() {
+  if (S.cmpOn) { backToMap(); return; }
+  if (S.mapOn) return;
+  if (S.choiceOpen >= 0 && !S.locked) { lockChoice(); return; }
+  if (S.paused) setPaused(false);
+  if (S.fbOn) { fireEnd(S.tok); return; }
+  var v = cur(); if (S.seg && !S.seg.loop && v.duration && !S.ended) { S.thud = true; v.currentTime = Math.max(0, v.duration - 0.05); }
+}
+document.querySelectorAll('#ctrl button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var a = b.dataset.a; b.blur(); audioInit();
+    if (!S.started) return;
+    if (a === 'menu') showMenu(); else if (a === 'restart') restart(); else if (a === 'pause') setPaused(!S.paused); else if (a === 'skip') skip();
+    else if (!S.paused) seekBy(a === 'fwd' ? 5 : -5);
+  });
+});
+function restart() { reset(); startSeg(segPrologue()); }
+function reset() {
+  S.tok++; S.endFired = -1; S.mapOn = false; S.cmpOn = false; S.choiceOpen = -1; S.locked = false; S.mode = 'main'; S.tried = null; S.tries = {}; S.room = { c1: null, c2: null }; S.roomRoad = RD0; S.shown = RD0; S.paused = false; S.ended = false; document.body.classList.remove('paused'); $('#pp').textContent = 'Pause';
+  layer('#map', false); layer('#compare', false); layer('#choice', false); layer('#paused', false); $('#choice').innerHTML = ''; document.querySelectorAll('.fly').forEach(function (e) { e.remove(); }); S.anims = [];
+  V.forEach(function (v) { v._key = null; v.pause(); }); fb.style.display = 'none'; S.fbOn = false; S.seg = null;
+}
+function showMenu() {
+  reset(); S.started = false; document.body.classList.remove('live');
+  var sp = $('#splash'); sp.classList.remove('off'); layer('#splash', true);
+}
+function launch(fn) {
+  if (S.started || !D) return; S.started = true; audioInit(); layer('#splash', false); $('#splash').classList.add('off'); document.body.classList.add('live'); wake();
+  setTimeout(fn, 250);
+}
+function startStory() { launch(function () { S.mode = 'main'; startSeg(segPrologue()); }); }
+function jumpToVote() { launch(function () { S.mode = 'main'; startSeg(segWait1()); }); }
+function playScenario(road, only2036) {
+  launch(function () {
+    var p = road.split('-'); S.mode = 'scenario'; S.room = { c1: p[0], c2: p[1] }; S.roomRoad = road; S.fromRect = [null, null];
+    startSeg(only2036 ? segEnd(road) : segC1(p[0]));
+  });
+}
+var begin = startStory;
+function buildMenu() {
+  var g = $('#mScn'); g.innerHTML = '';
+  ROWS.forEach(function (rd, i) {
+    var p = rd.split('-'), info = Agamoto.road(rd), E = info.endingInfo, cnt = info.endings[info.ending];
+    var tone = E.tone === 'good' ? 'var(--teal)' : E.tone === 'hard' ? 'var(--coral)' : 'var(--mustard)';
+    var c = document.createElement('div'); c.className = 'paper scard'; c.style.setProperty('--tone', tone);
+    c.innerHTML = '<div class="sheet" style="clip-path:' + torn(420, 196, 120 + i, 4) + '"></div><div class="in">' +
+      '<div class="key">' + (i + 1) + '</div><div class="bar"></div>' +
+      '<div class="k lab">2026 · ' + esc(optLabel(0, p[0])) + '</div><div class="k lab">2027 · ' + esc(optLabel(1, p[1])) + '</div>' +
+      '<div class="e ital">' + esc(E.label) + '</div><div class="of lab">' + cnt + ' of 10 futures</div>' +
+      '<div class="acts"><button type="button" class="play lab">Play from 2026 ›</button><button type="button" class="only lab">2036 only</button></div></div>';
+    c.querySelector('.play').addEventListener('click', function () { playScenario(rd, false); });
+    c.querySelector('.only').addEventListener('click', function () { playScenario(rd, true); });
+    g.appendChild(c);
+  });
+}
+$('#mStart').addEventListener('click', startStory);
+$('#mJump').addEventListener('click', jumpToVote);
+addEventListener('pointerdown', function () { audioInit(); });
+addEventListener('keydown', function (e) {
+  if (e.repeat && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  audioInit();
+  var k = e.key;
+  if (!S.started) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (k === 'Enter' || k === ' ') { e.preventDefault(); startStory(); return; }
+    var m = '1234'.indexOf(k); if (m >= 0) playScenario(ROWS[m], false);
+    return;
+  }
+  if (k === 'm' || k === 'M') { showMenu(); return; }
+  if (k === ' ') { e.preventDefault(); setPaused(!S.paused); return; }
+  if (k === 'r' || k === 'R') { restart(); return; }
+  if (S.paused) return;
+  if (k === 'ArrowLeft' || k === 'ArrowRight') { seekBy(k === 'ArrowRight' ? 5 : -5); return; }
+  if (k === 'n' || k === 'N') { skip(); return; }
+  if (S.cmpOn) { if (k === 'Enter' || k === 'Escape') backToMap(); return; }
+  if (S.mapOn) { var n = '1234'.indexOf(k); if (n >= 0) chooseRoad(ROWS[n]); return; }
+  if (S.choiceOpen >= 0) { if (k === '1') vote(0); else if (k === '2') vote(1); else if (k === 'Enter') lockChoice(); }
+});
+
+/* ---------- boot ---------- */
+fetch('company.json').then(function (r) { return r.json(); }).then(function (co) { CO = co; D = co.decisions; Agamoto.init(co); return Promise.all([document.fonts.load('italic 40px "Instrument Serif"'), document.fonts.load('700 30px "Barlow Condensed"'), document.fonts.load('800 30px "Barlow Condensed"')]); })
+  .then(function () { buildMenu(); return prep(hid(), segPrologue()); }).then(function () { requestAnimationFrame(function (t) { lastNow = t; loop(t); }); });
+$('#gosheet').style.clipPath = torn(460, 96, 17, 4);
+window.PLAY = { startStory: startStory, jumpToVote: jumpToVote, playScenario: playScenario, showMenu: showMenu, skip: skip, seekBy: seekBy, restart: restart, S: S, startSeg: startSeg, segs: { prologue: segPrologue, wait1: segWait1, wait2: segWait2, c1: segC1, c2: segC2, end: segEnd, rewind: segRewind }, showMap: showMap, showCompare: showCompare, openChoice: openChoice, vote: vote, lockChoice: lockChoice, chooseRoad: chooseRoad, begin: begin };
 })();
 </script>
 </body></html>

@@ -1,0 +1,36 @@
+// node tools/clicktest.mjs [rootDir] → mouse-only run through the menu, choices, Skip, Menu and scenarios; screenshots qc/click-*.png
+import { chromium } from 'playwright'; import http from 'http'; import fs from 'fs'; import path from 'path';
+const root = path.resolve(process.argv[2] || '.'), out = path.resolve('qc');
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.woff2': 'font/woff2', '.mp4': 'video/mp4' };
+const srv = http.createServer((q, s) => { const p = path.join(root, decodeURIComponent(q.url.split('?')[0]).replace(/\/$/, '/index.html')); fs.readFile(p, (e, d) => { if (e) { s.writeHead(404); s.end(); return; } const ty = types[path.extname(p)] || 'application/octet-stream', range = q.headers.range;
+  if (range) { const [a, b] = range.replace('bytes=', '').split('-'); const st = +a, en = b ? +b : d.length - 1; s.writeHead(206, { 'content-type': ty, 'content-range': `bytes ${st}-${en}/${d.length}`, 'accept-ranges': 'bytes', 'content-length': en - st + 1 }); s.end(d.subarray(st, en + 1)); }
+  else { s.writeHead(200, { 'content-type': ty, 'accept-ranges': 'bytes', 'content-length': d.length }); s.end(d); } }); }).listen(0);
+const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 1280, height: 720 } }); const errs = []; pg.on('pageerror', e => errs.push(e.message));
+await pg.goto(`http://localhost:${srv.address().port}/`); await pg.waitForTimeout(1500);
+const seg = () => pg.evaluate(() => PLAY.S.seg && PLAY.S.seg.id), shot = n => pg.screenshot({ path: `${out}/click-${n}.png` });
+const until = (fn, ms = 20000) => pg.waitForFunction(fn, null, { timeout: ms, polling: 100 });
+const steps = []; const ok = async (label, fn) => { try { await fn(); steps.push('PASS  ' + label); } catch (e) { steps.push('FAIL  ' + label + '  (' + e.message.split('\n')[0] + ')'); } };
+const ctrl = async a => { await pg.mouse.move(640, 300); await pg.mouse.move(650, 310); await pg.click(`#ctrl button[data-a="${a}"]`); };
+await shot('1-menu');
+await ok('menu: skip the prologue → first vote', async () => { await pg.click('#mJump'); await until(() => PLAY.S.seg && PLAY.S.seg.id === 'wait-1'); });
+await pg.waitForTimeout(800); await shot('2-vote');
+await ok('click card 1 + Lock it in → c1-ban', async () => { await pg.click('#choice .opt[data-k="0"]'); await pg.click('#choice .lockbtn'); await until(() => PLAY.S.seg.id === 'c1-ban'); });
+await pg.waitForTimeout(1500);
+await ok('Skip button → wait-2-ban', async () => { await ctrl('skip'); await until(() => PLAY.S.seg.id === 'wait-2-ban'); });
+await ok('click card 2 + Lock it in → c2-ban-retrain', async () => { await pg.waitForTimeout(700); await pg.click('#choice .opt[data-k="1"]'); await pg.click('#choice .lockbtn'); await until(() => PLAY.S.seg.id === 'c2-ban-retrain'); });
+await pg.waitForTimeout(1200);
+await ok('+5s then −5s move the clip', async () => { const a = await pg.evaluate(() => document.querySelector('video[style*="z-index: 2"]').currentTime); await ctrl('fwd'); const b2 = await pg.evaluate(() => document.querySelector('video[style*="z-index: 2"]').currentTime); if (!(b2 > a + 3)) throw new Error(`fwd ${a}→${b2}`); await ctrl('back'); });
+await ok('Skip → 2036 film', async () => { await ctrl('skip'); await until(() => PLAY.S.seg.id === 'end-ban-retrain'); });
+await pg.waitForTimeout(1200); await shot('3-2036');
+await ok('Skip → What if? map', async () => { await ctrl('skip'); await until(() => PLAY.S.mapOn, 5000); });
+await pg.waitForTimeout(600); await shot('4-map');
+await ok('Menu button → menu screen', async () => { await ctrl('menu'); await until(() => !PLAY.S.started && document.querySelector('#splash').classList.contains('on')); });
+await pg.waitForTimeout(500);
+await ok('scenario 4 "2036 only" → end-build-retrain', async () => { await pg.click('#mScn .scard:nth-child(4) .only'); await until(() => PLAY.S.seg && PLAY.S.seg.id === 'end-build-retrain'); });
+await pg.waitForTimeout(1500);
+await ok('key M → menu, key 3 → scenario build-cut from 2026', async () => { await pg.keyboard.press('m'); await pg.waitForTimeout(400); await pg.keyboard.press('3'); await until(() => PLAY.S.seg && PLAY.S.seg.id === 'c1-build'); });
+await ok('scenario runs c1 → c2 without a vote', async () => { await pg.waitForTimeout(1000); await ctrl('skip'); await until(() => PLAY.S.seg.id === 'c2-build-cut'); });
+await ok('Pause button pauses and shows the keys', async () => { await ctrl('pause'); await until(() => PLAY.S.paused); });
+await pg.waitForTimeout(500); await shot('5-paused');
+await ok('Restart button → prologue', async () => { await ctrl('restart'); await until(() => PLAY.S.seg && PLAY.S.seg.id === 'prologue' && !PLAY.S.paused); });
+console.log(steps.join('\n')); console.log('page errors:', errs.length ? errs.join(' | ') : 'none'); await b.close(); srv.close();

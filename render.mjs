@@ -2,7 +2,7 @@
 //   node render.mjs                    render every clip into clips/<id>.mp4 (priority order, 3 pages in parallel)
 //   node render.mjs wait-1 c1-ban      render only these ids (also 'rewind-<road>', 'wait-2-<c1>')
 //   node render.mjs --walkthrough      concatenate the demo path into walkthrough.mp4
-//   node render.mjs --serve [port]     static server with Range support (for play.html), default port 8080
+//   node render.mjs --serve [port]     static server with Range support (for the player), default port 8080
 import { chromium } from 'playwright';
 import http from 'http'; import fs from 'fs'; import path from 'path'; import os from 'os';
 import { spawn } from 'child_process'; import { fileURLToPath } from 'url';
@@ -50,7 +50,7 @@ async function renderOne(browser, port, id) {
   const sp = spec(id), t0 = Date.now(), page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   try {
-    await page.goto(`http://localhost:${port}/index.html?clip=${sp.clip}&road=${sp.road}&s=0.6667&static=1`);
+    await page.goto(`http://localhost:${port}/story.html?clip=${sp.clip}&road=${sp.road}&s=0.6667&static=1`);
     await page.evaluate(() => AGAMOTO.ready);
     const dur = await page.evaluate(c => AGAMOTO.dur(c), sp.clip), n = Math.round(dur * FPS);
     fs.mkdirSync(CLIPS, { recursive: true });
@@ -97,5 +97,5 @@ function walkthrough() {
 
 const args = process.argv.slice(2);
 if (args[0] === '--walkthrough') walkthrough();
-else if (args[0] === '--serve') { const p = +args[1] || 8080; serve(p).then(() => console.log(`http://localhost:${p}/play.html`)); }
+else if (args[0] === '--serve') { const p = +args[1] || 8080; serve(p).then(() => console.log(`http://localhost:${p}/`)); }
 else await renderAll(args.length ? args : DEFAULT_ORDER);

@@ -1,4 +1,4 @@
-// node tools/flowtest.mjs [rootDir]  → drives play.html through a full room session, screenshots to qc/flow-*.png
+// node tools/flowtest.mjs [rootDir]  → drives the player (index.html) through a full room session, screenshots to qc/flow-*.png
 // Headless Chromium has no H.264, so point rootDir at a copy whose clips/*.mp4 are VP8 transcodes.
 import { chromium } from 'playwright'; import http from 'http'; import fs from 'fs'; import path from 'path';
 const root = path.resolve(process.argv[2] || '.'), out = path.resolve('qc');
@@ -8,13 +8,13 @@ const srv = http.createServer((q, s) => { const p = path.join(root, decodeURICom
   else { s.writeHead(200, { 'content-type': ty, 'accept-ranges': 'bytes', 'content-length': d.length }); s.end(d); } }); }).listen(0);
 const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] }); const pg = await b.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; pg.on('pageerror', e => errs.push(e.message));
-await pg.goto(`http://localhost:${srv.address().port}/play.html`); await pg.waitForTimeout(1200);
+await pg.goto(`http://localhost:${srv.address().port}/index.html`); await pg.waitForTimeout(1200);
 const t0 = Date.now(), log = [];
 await pg.exposeFunction('_seg', (id, fb) => log.push([((Date.now() - t0) / 1000).toFixed(2), id, fb ? 'LIVE-FALLBACK' : 'video']));
 await pg.evaluate(() => { let last = null; setInterval(() => { const s = PLAY.S.seg; if (s && s.id !== last) { last = s.id; window._seg(s.id, PLAY.S.fbOn); } }, 50); });
 const shot = n => pg.screenshot({ path: `${out}/flow-${n}.png` });
 const until = (fn, ms = 60000) => pg.waitForFunction(fn, null, { timeout: ms, polling: 100 });
-await pg.mouse.click(640, 560);
+await pg.keyboard.press("Enter");
 await until(() => PLAY.S.seg && PLAY.S.seg.id === 'wait-1', 30000); await pg.waitForTimeout(700);
 await pg.keyboard.press('1'); await pg.keyboard.press('1'); await pg.keyboard.press('2'); await pg.waitForTimeout(300); await shot('1-choice');
 await pg.keyboard.press('Enter'); await pg.waitForTimeout(280); await shot('2-cardfly'); await pg.waitForTimeout(900); await shot('3-landed');

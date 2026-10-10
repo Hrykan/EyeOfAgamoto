@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eye of Agamoto · Vidya Classes</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>html,body{margin:0;height:100%;background:#1f1b18;overflow:hidden}canvas{display:block;width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;margin:auto;position:absolute;inset:0}</style>
+</head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>var CLIPS = window.CLIPS = {};</script>
+<script src="engine.js"></script>
+<script src="collage.js"></script>
+<script src="scenes.js"></script>
+<script src="endings.js"></script>
+<script>
+(function () {
+  var Q = new URLSearchParams(location.search), S = parseFloat(Q.get('s') || '1');
+  var cv = document.getElementById('c'); cv.width = Math.round(1920 * S); cv.height = Math.round(1080 * S);
+  var ctx = cv.getContext('2d');
+  var DURS = { prologue: 15, 'wait-1': 4, 'wait-2': 4, 'c1-ban': 15, 'c1-build': 15, rewind: 3 };
+  Agamoto.ROADS.forEach(function (r) { DURS['c2-' + r] = 15; DURS['end-' + r] = 12; });
+  function dur(id) { return (CLIPS[id] && CLIPS[id].dur) || DURS[id] || 4; }
+  // HUD year for clip time t
+  function yearAt(id, t) {
+    var d = dur(id), P = C.prog;
+    if (id === 'prologue' || id === 'wait-1') return 2026;
+    if (id === 'wait-2') return 2027;
+    if (/^c1-/.test(id)) return 2026 + C.ease(P(t, 1.5, 13.5));
+    if (/^c2-/.test(id)) return 2027 + 3 * P(t, 1, 14);
+    if (/^end-/.test(id)) return 2030 + 6 * C.easeOut(P(t, 0.05, 0.9));
+    if (id === 'rewind') return 2036 - 10 * C.ease(P(t, 0.2, 2.8));
+    return 2026;
+  }
+  function roadFor(id, roadId) {
+    var m = id.match(/^(?:c2|end)-(\w+-\w+)$/); if (m) return m[1];
+    if (/^c1-/.test(id)) return id.slice(3) + '-retrain';
+    if (id === 'wait-2' && roadId) return roadId.split('-')[0] + '-retrain';
+    return roadId || 'build-retrain';
+  }
+  function placeholder(c, id, t, road) {
+    C.use(c); c.fillStyle = C.PALETTE.cream; c.fillRect(0, 0, 1920, 1080);
+    C.rect(360, 300, 1200, 420, C.PALETTE.paper, 3, { halftone: .4 });
+    C.label('placeholder · ' + id, 960, 440, 72, C.PALETTE.saffron, 'center', 800);
+    C.caption('This clip is still being made.', [], C.clamp(t / 2), 600);
+    c.fillStyle = C.PALETTE.teal; c.fillRect(360, 760, 1200 * t / dur(id), 10);
+  }
+  function hud(c, id, t, road) {
+    var y = yearAt(id, t), v = Agamoto.at(road, y), s0 = road.counters[2026];
+    C.use(c); c.save();
+    // brand
+    C.paper(C.torn(28, 24, 330, 70, 41, 3), C.PALETTE.paper, { lift: 4 });
+    // the Eye: an almond with a saffron iris that slowly looks around
+    var ex = 72, ey = 59, look = Math.sin(t * 1.3) * 4;
+    c.save(); c.beginPath(); c.moveTo(ex - 30, ey); c.quadraticCurveTo(ex, ey - 26, ex + 30, ey); c.quadraticCurveTo(ex, ey + 26, ex - 30, ey); c.closePath();
+    c.fillStyle = C.PALETTE.cream; c.fill(); c.lineWidth = 3.5; c.strokeStyle = C.PALETTE.tealDark; c.stroke(); c.clip();
+    c.fillStyle = C.PALETTE.saffron; c.beginPath(); c.arc(ex + look, ey, 10.5, 0, 6.283); c.fill();
+    c.fillStyle = C.PALETTE.ink; c.beginPath(); c.arc(ex + look, ey, 4.5, 0, 6.283); c.fill(); c.restore();
+    C.label('Eye of Agamoto', 116, 48, 24, C.PALETTE.ink, 'left', 800);
+    C.label('Vidya Classes', 116, 74, 19, C.PALETTE.inkSoft, 'left', 500);
+    // counters
+    var items = [['Students', Math.round(v.students).toLocaleString('en-IN'), v.students - s0.students, 20],
+                 ['Teachers', Math.round(v.teachers), v.teachers - s0.teachers, 1],
+                 ['Fees', '₹' + (Math.round(v.fees / 500) * 500).toLocaleString('en-IN'), s0.fees - v.fees, 400],
+                 ['Results', Math.round(v.results), v.results - s0.results, 1]];
+    C.paper(C.torn(28, 930, 760, 92, 43, 3), 'rgba(251,245,232,0.94)', { lift: 4 });
+    C.label(String(Math.round(y)), 52, 976, 44, C.PALETTE.ink, 'left', 800);
+    items.forEach(function (it, i) {
+      var x = 170 + i * 152; C.label(it[0], x, 956, 18, C.PALETTE.inkSoft, 'left', 500);
+      C.label(it[1], x, 990, 34, C.dirColor(it[2], it[3]), 'left', 800);
+    });
+    // trust line
+    c.font = 'italic 25px ' + C.FONTS.serif; var tl = '10 futures · same luck · a fictional company · a rehearsal, not a prediction', tw = c.measureText(tl).width;
+    c.fillStyle = 'rgba(31,27,24,0.78)'; c.fillRect(1892 - tw - 24, 1030, tw + 40, 40);
+    c.fillStyle = '#f4ead7'; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(tl, 1898, 1051);
+    c.restore();
+  }
+  function frame(id, t, roadId) {
+    var road = Agamoto.road(roadFor(id, roadId)), d = dur(id); t = Math.max(0, Math.min(d, t));
+    ctx.setTransform(S, 0, 0, S, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#f4ead7'; ctx.fillRect(0, 0, 1920, 1080);
+    C.use(ctx);
+    try { if (CLIPS[id]) { ctx.save(); CLIPS[id].draw(ctx, t, road); ctx.restore(); } else placeholder(ctx, id, t, road); }
+    catch (e) { ctx.restore && ctx.restore(); placeholder(ctx, id + ' (error: ' + e.message + ')', t, road); console.error(e); }
+    ctx.setTransform(S, 0, 0, S, 0, 0); C.use(ctx);
+    C.vignette(0.42); if (!Q.get('nograin')) C.grain(t, 0.45); hud(ctx, id, t, road);
+  }
+  var ready = fetch('company.json').then(function (r) { return r.json(); }).then(function (co) { Agamoto.init(co); return document.fonts.load('italic 40px "Instrument Serif"'); })
+    .then(function () { return Promise.all([document.fonts.load('700 30px "Barlow Condensed"'), document.fonts.load('800 30px "Barlow Condensed"'), document.fonts.load('500 30px "Barlow Condensed"')]); });
+  window.AGAMOTO = { ready: ready, dur: dur, frame: frame, canvas: cv, yearAt: yearAt, roadFor: roadFor };
+
+  // ---- live playback ----
+  var clipQ = Q.get('clip'), roadQ = Q.get('road') || 'build-retrain';
+  ready.then(function () {
+    if (Q.get('static')) return;
+    if (clipQ) { var t0 = performance.now(); (function loop() { var t = ((performance.now() - t0) / 1000) % dur(clipQ); frame(clipQ, t, roadQ); requestAnimationFrame(loop); })(); return; }
+    // whole story live: prologue → wait-1 (1/2, Enter) → c1 → wait-2 → c2 → end → (R rewinds to the other first choice)
+    var st = { id: 'prologue', t0: performance.now(), c1: 'build', c2: 'retrain', pick: null, stage: 0 };
+    function go(id) { st.id = id; st.t0 = performance.now(); }
+    function road() { return st.c1 + '-' + st.c2; }
+    function lock() {
+      if (st.id === 'wait-1') { st.c1 = st.pick === '1' ? 'ban' : 'build'; go('c1-' + st.c1); }
+      else if (st.id === 'wait-2') { st.c2 = st.pick === '1' ? 'cut' : 'retrain'; go('c2-' + road()); }
+      st.pick = null;
+    }
+    function rewind() { st.rw = road(); go('rewind'); }
+    window.AGAMOTO.live = st;
+    addEventListener('keydown', function (e) {
+      if (e.key === '1' || e.key === '2') st.pick = e.key;
+      if (e.key === 'Enter') lock();
+      if (e.key === 'r' || e.key === 'R') rewind();
+    });
+    // click a card to choose it; click after 2036 to rewind
+    cv.addEventListener('click', function (e) {
+      var r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 1920, y = (e.clientY - r.top) / r.height * 1080;
+      if (st.id === 'wait-1' || st.id === 'wait-2') {
+        for (var i = 0; i < 2; i++) if (x >= 520 + i * 460 && x <= 940 + i * 460 && y >= 740 && y <= 900) { st.pick = String(i + 1); lock(); return; }
+      } else if (/^end-/.test(st.id) && (performance.now() - st.t0) / 1000 >= dur(st.id)) rewind();
+    });
+    function wrap(c, text, x, y, maxW, lh) {
+      var words = text.split(' '), line = '', lines = [];
+      words.forEach(function (w) { var t = line ? line + ' ' + w : w; if (c.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; });
+      lines.push(line); lines.forEach(function (l, i) { c.fillText(l, x, y + i * lh); });
+    }
+    (function loop() {
+      var t = (performance.now() - st.t0) / 1000, d = dur(st.id);
+      if (t >= d) {
+        var next = { prologue: 'wait-1', 'wait-1': 'wait-1', 'wait-2': 'wait-2' }[st.id];
+        if (/^c1-/.test(st.id)) next = 'wait-2';
+        else if (/^c2-/.test(st.id)) next = 'end-' + road();
+        else if (/^end-/.test(st.id)) next = null;
+        else if (st.id === 'rewind') { st.c1 = st.c1 === 'build' ? 'ban' : 'build'; next = 'c1-' + st.c1; }
+        if (next) { go(next); t = 0; } else t = d;
+      }
+      frame(st.id, t, st.id === 'rewind' ? st.rw : road());
+      var c = ctx; c.setTransform(S, 0, 0, S, 0, 0);
+      if (st.id === 'wait-1' || st.id === 'wait-2') {
+        var dec = Agamoto.company().decisions[st.id === 'wait-1' ? 0 : 1];
+        C.use(c); C.caption(dec.question, [], 1, 120, { size: 50 });
+        dec.options.forEach(function (o, i) {
+          var on = st.pick === String(i + 1), cx = 730 + i * 460;
+          C.rect(cx - 210, 740, 420, 160, on ? C.PALETTE.saffron : C.PALETTE.paper, 60 + i);
+          C.label((i + 1) + ' · ' + o.label, cx, 782, 30, C.PALETTE.ink, 'center');
+          c.save(); c.font = 'italic 24px ' + C.FONTS.serif; c.fillStyle = C.PALETTE.inkSoft; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+          wrap(c, o.consequence, cx, 830, 370, 28); c.restore();
+        });
+        c.save(); c.font = 'italic 26px ' + C.FONTS.serif; c.fillStyle = C.PALETTE.cream; c.textAlign = 'center'; c.shadowColor = 'rgba(0,0,0,.7)'; c.shadowBlur = 8;
+        c.fillText('Click a card to choose it · or press 1 / 2, then Enter', 960, 935); c.restore();
+      } else if (/^end-/.test(st.id) && t >= d) {
+        C.use(c); C.caption('Click, or press R, to rewind and try the other first choice.', [], 1, 900, { size: 40 });
+      }
+      requestAnimationFrame(loop);
+    })();
+  });
+})();
+</script>
+</body></html>

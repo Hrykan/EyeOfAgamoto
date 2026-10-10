@@ -1,4 +1,4 @@
-/* collage.js — shared paper-collage drawing kit. Global `C`. All drawing goes to C.ctx (set by index.html
+/* collage.js — shared paper-collage drawing kit. Global `C`. All drawing goes to C.ctx (set by story.html
    before every draw call; modules may also call C.use(ctx)). World space is always 1920×1080. */
 (function (root) {
   'use strict';
@@ -124,7 +124,7 @@
     var size = opts.size || 54, x0 = opts.x == null ? C.W / 2 : opts.x;
     var words = text.split(/\s+/), marks = words.map(function (w) { var m = /^\*.*\*[.,!?]?$/.test(w) || emph.indexOf(w.replace(/[*.,!?]/g, '')) >= 0; return m; });
     words = words.map(function (w) { return w.replace(/\*/g, ''); });
-    c.save(); c.font = 'italic ' + size + 'px ' + C.FONTS.serif;
+    c.save(); c.font = 'italic ' + size + 'px ' + C.FONTS.serif; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
     var sp = c.measureText(' ').width, widths = words.map(function (w) { return c.measureText(w).width; });
     var total = widths.reduce(function (a, b) { return a + b; }, 0) + sp * (words.length - 1);
     var shown = Math.ceil(C.clamp(p) * words.length - 1e-6), stripP = C.easeOut(C.clamp(p * 4));
