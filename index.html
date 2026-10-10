@@ -61,7 +61,7 @@
                  ['Fees', '₹' + (Math.round(v.fees / 500) * 500).toLocaleString('en-IN'), s0.fees - v.fees, 400],
                  ['Results', Math.round(v.results), v.results - s0.results, 1]];
     C.paper(C.torn(28, 930, 760, 92, 43, 3), 'rgba(251,245,232,0.94)', { lift: 4 });
-    C.label(String(Math.floor(y + 1e-6)), 52, 976, 44, C.PALETTE.ink, 'left', 800);
+    C.label(String(Math.round(y)), 52, 976, 44, C.PALETTE.ink, 'left', 800);
     items.forEach(function (it, i) {
       var x = 170 + i * 152; C.label(it[0], x, 956, 18, C.PALETTE.inkSoft, 'left', 500);
       C.label(it[1], x, 990, 34, C.dirColor(it[2], it[3]), 'left', 800);
