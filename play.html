@@ -169,7 +169,7 @@ function startSeg(seg) {
     var old = cur();
     if (v.currentTime > 0.05) v.currentTime = 0;
     v.style.zIndex = 2; old.style.zIndex = 1;
-    var p = v.play(); if (p && p.catch) p.catch(function () {});
+    var p = v.play(); if (p && p.catch) p.catch(function (e) { soundFallback(v, e && e.name); });
     ci = 1 - ci; S.fbOn = false; fb.style.display = 'none';
     var done = function () { if (cur() !== old) { old.pause(); try { old.currentTime = 0; } catch (e) {} } if (S.fbSrc) { fb.src = 'about:blank'; S.fbSrc = null; } };
     if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(done); else setTimeout(done, 80);
@@ -218,6 +218,8 @@ function loop(now) {
     var ct;
     if (S.fbOn) { S.fbT += dt; ct = S.fbT; if (S.seg && !S.seg.loop && ct >= S.seg.dur && S.endFired !== S.tok) fireEnd(S.tok); }
     else ct = cur().currentTime;
+    // sound safety net: a clip that won't advance unmuted (no audio device, a blocked autoplay) falls back to muted
+    if (!S.fbOn && S.sound && !cur().paused && !S.ended) { if (ct > S.prevT + 1e-3) S.stallT = 0; else if ((S.stallT = (S.stallT || 0) + dt) > 1.5) soundFallback(cur(), 'stall'); }
     S.prevT = ct;
     if (!S.fbOn && S.seg && !S.ended && !cur().paused && cur().duration && ct >= cur().duration - 1 / 30) fireEnd(S.tok);
   }
@@ -433,6 +435,10 @@ document.querySelectorAll('#ctrl button').forEach(function (b) {
   });
 });
 function restart() { reset(); startSeg(segPrologue()); }
+function soundFallback(v, why) {
+  if (!S.sound) return; S.stallT = 0; setSound(false); var p = v.play(); if (p && p.catch) p.catch(function () {});
+  toast(why === 'stall' ? 'No sound output · playing muted (S to retry)' : 'Sound blocked · playing muted (S to retry)');
+}
 function setSound(on) { S.sound = on; V.forEach(function (v) { v.muted = !on; }); var b = $('#snd'); if (b) b.textContent = on ? 'Sound on' : 'Sound off'; }
 function reset() {
   S.tok++; S.endFired = -1; S.mapOn = false; S.cmpOn = false; S.choiceOpen = -1; S.locked = false; S.mode = 'main'; S.tried = null; S.tries = {}; S.room = { c1: null, c2: null }; S.roomRoad = RD0; S.shown = RD0; S.paused = false; S.ended = false; document.body.classList.remove('paused'); $('#pp').textContent = 'Pause';
