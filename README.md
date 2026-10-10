@@ -16,6 +16,7 @@ Each of the 4 roads is run as **10 futures with the same luck** (a seeded engine
 ## Live link
 
 - Stage player: `play.html` — on GitHub Pages: Settings → Pages → Deploy from a branch → `claude/sleepy-faraday-48qv15` / root, then open https://hrykan.github.io/EyeOfAgamoto/play.html
+- Vercel: import this repository in Vercel (no build step, static); `vercel.json` opens the stage player at `/`
 - Fallback, drawn live: `index.html` (keys 1 / 2 choose, Enter locks, R rewinds)
 - Ultimate fallback: `walkthrough.mp4`
 
