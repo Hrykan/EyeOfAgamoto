@@ -31,6 +31,18 @@ To make **Write your own choice** call Claude, add an environment variable in th
 
 In the claude.ai published version, the page uses the viewer's own Claude account instead (no key needed; the first design asks the viewer's permission).
 
+## Story v3: the years, told through people and places
+
+Between the decisions the story leaves the boardroom and follows four people: **Aarav** (14 in 2026, wants to be an
+engineer), his mother **Swati** (a tailor who pays the fees), **Meera** (chemistry teacher, 12 years at Vidya) and
+**Sunanda** (the founder). Each road visits the same places, and what happens there depends on the road and its luck:
+Aarav's room at midnight (2027), the staff room (2027), Swati's tailoring shop and the parents' group chat (2028),
+FC Road (2029), results day (2030), Meera in 2032 and Sunanda's office in 2034.
+
+It is built with the animotion skill's grammar: paper-collage cut-outs, torn photo prints (CC BY, credits in
+`assets/web/CREDITS.md`), stamps, close-ups with four-beat takes, transitions on a 96 bpm beat grid, and a score with a
+sound for every visible event, baked into each clip. The player unmutes when you press Start (S toggles sound).
+
 ## Run it locally
 
 ```bash

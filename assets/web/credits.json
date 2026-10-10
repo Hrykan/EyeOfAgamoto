@@ -1,0 +1,62 @@
+[
+ {
+  "file": "fc-road-crossword.jpg",
+  "provider": "wikimedia-commons",
+  "title": "Crossword Bookstore, FC Road, Pune.jpg",
+  "creator": "DesiBoy101",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0",
+  "attribution": "\"Crossword Bookstore, FC Road, Pune.jpg\" by DesiBoy101, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0), via Wikimedia Commons",
+  "attribution_required": true,
+  "landing": "https://commons.wikimedia.org/wiki/File:Crossword_Bookstore,_FC_Road,_Pune.jpg",
+  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Crossword_Bookstore%2C_FC_Road%2C_Pune.jpg/1920px-Crossword_Bookstore%2C_FC_Road%2C_Pune.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+  "width": 1600,
+  "height": 1200,
+  "fetched": "2026-10-10"
+ },
+ {
+  "file": "pune-night.jpg",
+  "provider": "openverse/flickr",
+  "title": "Night Shoot in Pune",
+  "creator": "rohitjoshi",
+  "license": "by 2.0",
+  "license_url": "https://creativecommons.org/licenses/by/2.0/",
+  "attribution": "\"Night Shoot in Pune\" by rohitjoshi is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/.",
+  "landing": "https://www.flickr.com/photos/53143994@N06/5062888314",
+  "url": "https://live.staticflickr.com/4153/5062888314_9d3c73ee0b_b.jpg",
+  "thumb": "https://api.openverse.org/v1/images/728c6fb6-4430-4842-9dee-542e13a6cd8c/thumb/",
+  "width": 1024,
+  "height": 675,
+  "fetched": "2026-10-10"
+ },
+ {
+  "file": "auto-rickshaw.jpg",
+  "provider": "openverse/wikimedia",
+  "title": "India auto-rickshaw tuk tuk adapted for logistics July 2007",
+  "creator": "shankar s.",
+  "license": "by 2.0",
+  "license_url": "https://creativecommons.org/licenses/by/2.0/",
+  "attribution": "\"India auto-rickshaw tuk tuk adapted for logistics July 2007\" by shankar s. is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/.",
+  "landing": "https://commons.wikimedia.org/w/index.php?curid=28952236",
+  "url": "https://upload.wikimedia.org/wikipedia/commons/9/96/India_auto-rickshaw_tuk_tuk_adapted_for_logistics_July_2007.jpg",
+  "thumb": "https://api.openverse.org/v1/images/f960f2d6-c4ca-4e04-8baa-55b4fbd36c38/thumb/",
+  "width": 2304,
+  "height": 1728,
+  "fetched": "2026-10-10"
+ },
+ {
+  "file": "street-tailor-1.jpg",
+  "provider": "openverse/flickr",
+  "title": "Street tailor in Bangalore, India - 1",
+  "creator": "OXLAEY.com",
+  "license": "by 2.0",
+  "license_url": "https://creativecommons.org/licenses/by/2.0/",
+  "attribution": "\"Street tailor in Bangalore, India - 1\" by OXLAEY.com is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/.",
+  "landing": "https://www.flickr.com/photos/97185651@N08/15343920184",
+  "url": "https://live.staticflickr.com/8659/15343920184_c18d90d473_b.jpg",
+  "thumb": "https://api.openverse.org/v1/images/38a0cee7-84ce-4679-ae2d-56a94e3fdad9/thumb/",
+  "width": 1024,
+  "height": 576,
+  "fetched": "2026-10-10"
+ }
+]

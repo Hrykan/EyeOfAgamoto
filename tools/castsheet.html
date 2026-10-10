@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../fonts/fonts.css">
+<style>body{margin:0;background:#222}canvas{display:block}</style></head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script src="../collage.js"></script><script src="../cast.js"></script>
+<script>
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');C.use(ctx);
+ctx.fillStyle=C.PALETTE.wall;ctx.fillRect(0,0,1920,1080);ctx.fillStyle=C.PALETTE.floor;ctx.fillRect(0,700,1920,380);
+var row=[['aarav','smile',CAST.ARMS.wave,'stand'],['swati','worried',CAST.ARMS.hips,'stand'],['meera','determined',CAST.ARMS.carryBox,'stand',{holdL:null,holdR:'box'}],['sunanda','talk',CAST.ARMS.point,'stand',{holdR:'chalk'}],['aarav','focused',CAST.ARMS.phoneLook,'sit',{holdR:'phone'}],['swati','cry',CAST.ARMS.clap,'stand',{}],['meera','grin',CAST.ARMS.raise,'walk',{walk:1}],['sunanda','tired',CAST.ARMS.think,'sit',{}]];
+row.forEach(function(r,i){var x=150+i*230,o=Object.assign({face:r[1],pose:r[3],t:1.3},r[2],r[4]||{});
+  if(r[3]==='sit'){ctx.fillStyle=C.PALETTE.wood;ctx.fillRect(x-20,680,50,8);}
+  CAST.draw(ctx,r[0],x,r[3]==='sit'?680:760,420,o);
+  C.label(r[0]+' · '+r[1],x,820,26,C.PALETTE.ink,'center',700);});
+// close-ups row
+if(location.search.indexOf('close')>=0){ctx.fillStyle=C.PALETTE.wall;ctx.fillRect(0,0,1920,1080);['aarav','swati','meera','sunanda'].forEach(function(w,i){CAST.draw(ctx,w,250+i*460,1500,1500,{face:['surprised','sad','smile','determined'][i],t:0.4,flip:i%2===1});});}
+for(var k=0;k<6;k++)CAST.draw(ctx,'extra:'+k,1300+k*100,640,200,{face:'neutral',t:k});
+</script></body></html>

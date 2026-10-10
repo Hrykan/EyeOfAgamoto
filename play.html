@@ -12,7 +12,7 @@
   <div id="map" class="layer"></div>
   <div id="compare" class="layer"></div>
   <div id="why" class="layer"></div>
-  <div id="paused" class="layer"><div class="lab">Paused</div><div class="keys ital"><kbd>1</kbd> <kbd>2</kbd> choose (with a room: add a vote) · <kbd>Enter</kbd> lock a room vote · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div></div>
+  <div id="paused" class="layer"><div class="lab">Paused</div><div class="keys ital"><kbd>1</kbd> <kbd>2</kbd> choose (with a room: add a vote) · <kbd>Enter</kbd> lock a room vote · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>S</kbd> sound · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div></div>
   <div id="toast" class="lab"></div>
   <div id="ctrl" role="toolbar" aria-label="Playback">
     <button type="button" data-a="menu" title="Back to the menu (M)">Menu</button>
@@ -21,6 +21,7 @@
     <button type="button" data-a="pause" id="pp" title="Pause or play (Space)">Pause</button>
     <button type="button" data-a="fwd" title="Forward 5 seconds (→)">+5s</button>
     <button type="button" data-a="skip" class="skip" title="Skip to the next part (N)">Skip ›</button>
+    <button type="button" data-a="sound" id="snd" title="Sound on or off (S)">Sound on</button>
   </div>
   <div id="splash" class="layer on">
     <svg class="eye" viewBox="0 0 520 270" aria-hidden="true">
@@ -55,7 +56,7 @@
         </a>
       </div>
     </div>
-    <div class="keys ital"><b class="lab">Keyboard</b> <kbd>Enter</kbd> start · <kbd>1</kbd>–<kbd>4</kbd> pick a scenario · in the story: <kbd>1</kbd> <kbd>2</kbd> choose (with a room: add a vote) · <kbd>Enter</kbd> lock a room vote · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div>
+    <div class="keys ital"><b class="lab">Keyboard</b> <kbd>Enter</kbd> start · <kbd>1</kbd>–<kbd>4</kbd> pick a scenario · in the story: <kbd>1</kbd> <kbd>2</kbd> choose (with a room: add a vote) · <kbd>Enter</kbd> lock a room vote · <kbd>Space</kbd> pause · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>N</kbd> skip · <kbd>S</kbd> sound · <kbd>R</kbd> restart · <kbd>M</kbd> menu</div>
   </div>
 </div>
 <script src="engine.js"></script>
@@ -68,7 +69,7 @@ var stage = $('#stage'), V = [$('#vA'), $('#vB')], fb = $('#fb'), ci = 0;
 var RD0 = 'build-retrain', ROWS = ['ban-cut', 'ban-retrain', 'build-cut', 'build-retrain'];
 var SHORT = { ban: 'Ban AI', build: 'Build AI', cut: 'Cut staff', retrain: 'Retrain' };
 var CO = null, D = null;
-var S = { voting: false, tok: 0, seg: null, mode: 'main', room: { c1: null, c2: null }, roomRoad: RD0, shown: RD0, tried: null, tries: {}, paused: false, ended: false,
+var S = { voting: false, sound: false, tok: 0, seg: null, mode: 'main', room: { c1: null, c2: null }, roomRoad: RD0, shown: RD0, tried: null, tries: {}, paused: false, ended: false,
   votes: [0, 0], choiceOpen: -1, locked: false, cd: 0, fbOn: false, fbT: 0, prevT: 0, fromRect: [null, null], anims: [], hover: null, started: false, endFired: -1 };
 
 /* ---------- stage scaling ---------- */
@@ -129,7 +130,9 @@ function chime() {
 
 /* ---------- segments ---------- */
 // clip lengths (story.html SHOTS): the board view wraps every impact film
-var durOf = function (id) { return id === 'prologue' ? 17.2 : /^wait/.test(id) ? 4 : /^c1-/.test(id) ? 25.9 : /^c2-/.test(id) ? 23.7 : /^end/.test(id) ? 21.73 : /^rewind/.test(id) ? 5.7 : 15; };
+// shot lengths on the 96 bpm grid (the video's own duration wins once loaded): c1 = push 2.5 + 15 + bedroom 8.75 + pull 2.5;
+// c2 = push 2.5 + 2027–2030 chapter 32.5 + 2032–2034 chapter 12.5; end = flash + 11.88 + batch 7.5 + pull 2.5
+var durOf = function (id) { return id === 'prologue' ? 17.5 : /^wait/.test(id) ? 4 : /^c1-/.test(id) ? 28.75 : /^c2-/.test(id) ? 47.5 : /^end/.test(id) ? 22.03 : /^rewind/.test(id) ? 5.7 : 15; };
 var STAMP_T = 7.43; // the 2036 stamp lands here in end-* clips
 function mk(id, road, o) { return Object.assign({ id: id, clip: id, road: road, src: 'clips/' + id + '.mp4', dur: durOf(id), loop: false, next: null, onStart: null, onEnd: null }, o || {}); }
 var segPrologue = function () { return mk('prologue', RD0, { next: segWait1 }); };
@@ -137,7 +140,7 @@ var segWait1 = function () { return mk('wait-1', RD0, { loop: true, next: segWai
 var segWait2 = function (c1) { return mk('wait-2-' + c1, c1 + '-retrain', { clip: 'wait-2', loop: true, next: function () { return segWait2(c1); }, onStart: function () { openChoice(1); } }); };
 var segC1 = function (c1) { return mk('c1-' + c1, c1 + '-retrain', { onStart: function () { flyCard(0, c1); }, next: function () { return S.mode === 'main' ? segWait2(c1) : segC2(S.mode === 'try' ? S.tried : S.roomRoad); } }); };
 var segC2 = function (road) { return mk('c2-' + road, road, { onStart: function () { flyCard(1, road.split('-')[1], road.split('-')[0]); }, next: function () { return segEnd(road); } }); };
-var segEnd = function (road) { return mk('end-' + road, road, { onStart: function () { S.shown = road; chime(); }, onEnd: function () { setTimeout(function () { showWhy(road); }, 400); } }); };
+var segEnd = function (road) { return mk('end-' + road, road, { onStart: function () { S.shown = road; }, onEnd: function () { setTimeout(function () { showWhy(road); }, 400); } }); };
 var segRewind = function (road) { return mk('rewind-' + road, road, { clip: 'rewind', next: function () { return segC1(S.tried.split('-')[0]); } }); };
 
 /* ---------- double-buffered video ---------- */
@@ -151,7 +154,7 @@ function prep(v, seg) {
     function ok() { fin('ok'); } function bad() { fin('fail'); }
     to = setTimeout(function () { fin('fail'); }, 7000);
     v.addEventListener('loadeddata', ok); v.addEventListener('error', bad);
-    v.pause(); v.preload = 'auto'; v.muted = true; v.src = seg.src; v.load();
+    v.pause(); v.preload = 'auto'; v.muted = !S.sound; v.src = seg.src; v.load();
   });
   return v._p;
 }
@@ -170,7 +173,8 @@ function startSeg(seg) {
     ci = 1 - ci; S.fbOn = false; fb.style.display = 'none';
     var done = function () { if (cur() !== old) { old.pause(); try { old.currentTime = 0; } catch (e) {} } if (S.fbSrc) { fb.src = 'about:blank'; S.fbSrc = null; } };
     if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(done); else setTimeout(done, 80);
-    if (!same) { whoosh(); if (seg.onStart) seg.onStart(seg); }
+    v.muted = !S.sound;   // the clips carry their own score and sound effects (story v3)
+    if (!same) { if (seg.onStart) seg.onStart(seg); }
     watchEnd(v, tok);
     preloadNext(seg);
     if (S.paused) { v.pause(); }
@@ -214,7 +218,6 @@ function loop(now) {
     var ct;
     if (S.fbOn) { S.fbT += dt; ct = S.fbT; if (S.seg && !S.seg.loop && ct >= S.seg.dur && S.endFired !== S.tok) fireEnd(S.tok); }
     else ct = cur().currentTime;
-    if (S.seg && /^end-/.test(S.seg.id) && !S.thud && S.prevT < STAMP_T && ct >= STAMP_T && ct - S.prevT < 0.6) { S.thud = true; thud(); }
     S.prevT = ct;
     if (!S.fbOn && S.seg && !S.ended && !cur().paused && cur().duration && ct >= cur().duration - 1 / 30) fireEnd(S.tok);
   }
@@ -425,11 +428,12 @@ document.querySelectorAll('#ctrl button').forEach(function (b) {
   b.addEventListener('click', function () {
     var a = b.dataset.a; b.blur(); audioInit();
     if (!S.started) return;
-    if (a === 'menu') showMenu(); else if (a === 'restart') restart(); else if (a === 'pause') setPaused(!S.paused); else if (a === 'skip') skip();
+    if (a === 'menu') showMenu(); else if (a === 'restart') restart(); else if (a === 'pause') setPaused(!S.paused); else if (a === 'skip') skip(); else if (a === 'sound') setSound(!S.sound);
     else if (!S.paused) seekBy(a === 'fwd' ? 5 : -5);
   });
 });
 function restart() { reset(); startSeg(segPrologue()); }
+function setSound(on) { S.sound = on; V.forEach(function (v) { v.muted = !on; }); var b = $('#snd'); if (b) b.textContent = on ? 'Sound on' : 'Sound off'; }
 function reset() {
   S.tok++; S.endFired = -1; S.mapOn = false; S.cmpOn = false; S.choiceOpen = -1; S.locked = false; S.mode = 'main'; S.tried = null; S.tries = {}; S.room = { c1: null, c2: null }; S.roomRoad = RD0; S.shown = RD0; S.paused = false; S.ended = false; document.body.classList.remove('paused'); $('#pp').textContent = 'Pause';
   layer('#map', false); layer('#compare', false); layer('#why', false); S.whyOn = false; layer('#choice', false); layer('#paused', false); $('#choice').innerHTML = ''; document.querySelectorAll('.fly').forEach(function (e) { e.remove(); }); S.anims = [];
@@ -440,7 +444,7 @@ function showMenu() {
   var sp = $('#splash'); sp.classList.remove('off'); layer('#splash', true);
 }
 function launch(fn) {
-  if (S.started || !D) return; S.started = true; audioInit(); layer('#splash', false); $('#splash').classList.add('off'); document.body.classList.add('live'); wake();
+  if (S.started || !D) return; S.started = true; audioInit(); setSound(true); layer('#splash', false); $('#splash').classList.add('off'); document.body.classList.add('live'); wake();
   setTimeout(fn, 250);
 }
 function startStory() { launch(function () { S.mode = 'main'; startSeg(segPrologue()); }); }
@@ -496,6 +500,7 @@ addEventListener('keydown', function (e) {
     return;
   }
   if (k === 'm' || k === 'M') { showMenu(); return; }
+  if (k === 's' || k === 'S') { setSound(!S.sound); return; }
   if (k === ' ') { e.preventDefault(); setPaused(!S.paused); return; }
   if (k === 'r' || k === 'R') { restart(); return; }
   if (S.paused) return;

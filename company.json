@@ -159,7 +159,7 @@
       "id": "trusted",
       "tone": "good",
       "label": "Pune's most trusted",
-      "line": "Mentors and AI, side by side. Every classroom full.",
+      "line": "Mentors who know every student. Every classroom full.",
       "when": {
         "students": [
           58,
@@ -211,7 +211,7 @@
       "id": "empty",
       "tone": "hard",
       "label": "Empty classrooms",
-      "line": "The rooms emptied. Sunanda starts again, with three students at dawn.",
+      "line": "The rooms emptied one by one. Sunanda still teaches the dawn batch.",
       "when": {
         "students": [
           0,
@@ -219,11 +219,11 @@
         ]
       },
       "glimpse": [
-        "Monday morning, 2036. Three students wait in the *dawn* light.",
+        "Monday morning, 2036. The 6 a.m. *batch*: three students.",
         "Monday morning, 2036. Sunanda picks up the chalk and starts *again*."
       ],
       "callouts": [
-        "Three students at dawn",
+        "The 6 a.m. batch",
         "She starts again"
       ]
     },

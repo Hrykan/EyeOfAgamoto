@@ -5,12 +5,21 @@
 <style>html,body{margin:0;height:100%;background:#1f1b18;overflow:hidden}canvas{display:block;width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;margin:auto;position:absolute;inset:0}</style>
 </head><body>
 <canvas id="c" width="1920" height="1080"></canvas>
-<script>var CLIPS = window.CLIPS = {};</script>
+<script>var CLIPS = window.CLIPS = {}; var PLACES = window.PLACES = {};</script>
 <script src="engine.js"></script>
 <script src="collage.js"></script>
+<script src="kit2.js"></script>
+<script src="cast.js"></script>
 <script src="scenes.js"></script>
 <script src="endings.js"></script>
 <script src="board.js"></script>
+<script src="places-family.js"></script>
+<script src="places-city.js"></script>
+<script src="places-meera.js"></script>
+<script src="places-sunanda.js"></script>
+<script src="chapters.js"></script>
+<script src="groove.js"></script>
+<script src="sound.js"></script>
 <script>
 (function () {
   var Q = new URLSearchParams(location.search), S = parseFloat(Q.get('s') || '1');
@@ -18,14 +27,18 @@
   var ctx = cv.getContext('2d');
   var DURS = { prologue: 15, 'wait-1': 4, 'wait-2': 4, 'c1-ban': 15, 'c1-build': 15, rewind: 3 };
   Agamoto.ROADS.forEach(function (r) { DURS['c2-' + r] = 15; DURS['end-' + r] = 12; });
-  function dur(id) { return (SHOTS[id] && SHOTS[id].dur) || (CLIPS[id] && CLIPS[id].dur) || DURS[id] || 4; }
+  // 'place-<name>' previews one PLACES scene on its own (QC: node render.mjs place-<name> --road <road>)
+  function place(id) { return /^place-/.test(id) ? PLACES[id.slice(6)] : null; }
+  function dur(id) { var pl = place(id); return (SHOTS[id] && SHOTS[id].dur) || (CLIPS[id] && CLIPS[id].dur) || (pl && pl.dur) || DURS[id] || 4; }
   // HUD year for clip time t
   function yearAt(id, t) {
     var sh = SHOTS[id]; if (sh) { var sg = segAt(sh, t); return sg.year(t - sg.t0); }
     return clipYear(id, t);
   }
   function clipYear(id, t) {
-    var d = dur(id), P = C.prog;
+    var d = dur(id), P = C.prog, k = CLIPS[id] || place(id);
+    if (k && typeof k.year === 'function') return k.year(t);       // chapters and places declare their own year
+    if (k && typeof k.year === 'number') return k.year;
     if (id === 'prologue' || id === 'wait-1') return 2026;
     if (id === 'wait-2') return 2027;
     if (/^c1-/.test(id)) return 2026 + C.ease(P(t, 1.5, 13.5));
@@ -35,8 +48,9 @@
     return 2026;
   }
   function roadFor(id, roadId) {
-    var m = id.match(/^(?:c2|end)-(\w+-\w+)$/); if (m) return m[1];
+    var m = id.match(/^(?:c2|end|mid)-(\w+-\w+)$/); if (m) return m[1];
     if (/^c1-/.test(id)) return id.slice(3) + '-retrain';
+    if (/^home-/.test(id)) return id.slice(5) + '-retrain';
     if (id === 'wait-2' && roadId) return roadId.split('-')[0] + '-retrain';
     return roadId || 'build-retrain';
   }
@@ -47,8 +61,14 @@
     C.caption('This clip is still being made.', [], C.clamp(t / 2), 600);
     c.fillStyle = C.PALETTE.teal; c.fillRect(360, 760, 1200 * t / dur(id), 10);
   }
+  // HUD: 'full' (the dashboard), 'year' (places and close-ups: a year chip only) or 'none'
+  function hudMode(id, t) {
+    var sh = SHOTS[id]; if (sh) { var sg = segAt(sh, t); return sg.hud ? sg.hud(t - sg.t0) : 'full'; }
+    var k = CLIPS[id] || place(id); return k && k.hud ? (typeof k.hud === 'function' ? k.hud(t) : k.hud) : (place(id) ? 'year' : 'full');
+  }
   function hud(c, id, t, road) {
-    var y = yearAt(id, t), v = Agamoto.at(road, y), s0 = road.counters[2026];
+    var y = yearAt(id, t), v = Agamoto.at(road, y), s0 = road.counters[2026], mode = hudMode(id, t);
+    if (mode === 'none') return;
     C.use(c); c.save();
     // brand
     C.paper(C.torn(28, 24, 330, 70, 41, 3), C.PALETTE.paper, { lift: 4 });
@@ -60,6 +80,10 @@
     c.fillStyle = C.PALETTE.ink; c.beginPath(); c.arc(ex + look, ey, 4.5, 0, 6.283); c.fill(); c.restore();
     C.label('Eye of Agamoto', 116, 48, 24, C.PALETTE.ink, 'left', 800);
     C.label('Vidya Classes', 116, 74, 19, C.PALETTE.inkSoft, 'left', 500);
+    if (mode === 'year') {
+      C.paper(C.torn(28, 958, 150, 66, 44, 3), 'rgba(251,245,232,0.94)', { lift: 4 });
+      C.label(String(Math.round(y)), 103, 992, 44, C.PALETTE.ink, 'center', 800);
+    } else {
     // counters
     var items = [['Students', Math.round(v.students).toLocaleString('en-IN'), v.students - s0.students, 20],
                  ['Teachers', Math.round(v.teachers), v.teachers - s0.teachers, 1],
@@ -71,6 +95,7 @@
       var x = 170 + i * 152; C.label(it[0], x, 956, 18, C.PALETTE.inkSoft, 'left', 500);
       C.label(it[1], x, 990, 34, C.dirColor(it[2], it[3]), 'left', 800);
     });
+    }
     // trust line
     c.font = 'italic 25px ' + C.FONTS.serif; var tl = Agamoto.futures() + ' futures · same luck · a fictional company · a rehearsal, not a prediction', tw = c.measureText(tl).width;
     c.fillStyle = 'rgba(31,27,24,0.78)'; c.fillRect(1892 - tw - 24, 1030, tw + 40, 40);
@@ -101,12 +126,25 @@
     c.lineTo(-10, 1100); c.closePath(); c.shadowColor = 'rgba(20,12,6,0.45)'; c.shadowBlur = 24; c.shadowOffsetX = 8; c.fillStyle = '#fbf5e8'; c.fill(); c.shadowColor = 'transparent'; c.clip();
     c.drawImage(img, 0, 0, 1920, 1080); c.restore();
   }
+  function evOf(k, r) { try { return k && k.events ? (typeof k.events === 'function' ? k.events(r) : k.events) : []; } catch (e) { console.error(e); return []; } }
   function segInner(clip, from, len) {
-    return { len: len, draw: function (c, tl, r) { CLIPS[clip].draw(c, from + tl, r); }, year: function (tl) { return clipYear(clip, from + tl); } };
+    return { len: len, draw: function (c, tl, r) { CLIPS[clip].draw(c, from + tl, r); }, year: function (tl) { return clipYear(clip, from + tl); },
+      hud: function (tl) { var k = CLIPS[clip]; return k && k.hud ? (typeof k.hud === 'function' ? k.hud(from + tl) : k.hud) : 'full'; },
+      events: function (r) { return evOf(CLIPS[clip], r).filter(function (e) { return e[0] >= from - 0.01 && e[0] < from + len; }).map(function (e) { return [e[0] - from].concat(e.slice(1)); }); } };
+  }
+  // one of the story's places (places-*.js), entered with the torn wipe from the shot before
+  function placeStill(name, t) { return function (r) { return still('place-' + name + '@' + t + '@' + rkey(r), function (x) { CHAPTERS.placeOf(name).draw(x, t, r); }); }; }
+  function segPlace(name, wipeFrom) {
+    var pl = CHAPTERS.placeOf(name), len = Math.round(pl.dur / C.BEAT) * C.BEAT;
+    return { len: len, cutSfx: wipeFrom ? 'rip' : 'swish', year: function (tl) { return typeof pl.year === 'function' ? pl.year(tl) : pl.year; }, hud: function () { return 'year'; },
+      events: function (r) { return evOf(CHAPTERS.placeOf(name), r); },
+      draw: function (c, tl, r) { CHAPTERS.placeOf(name).draw(c, tl, r); C.use(c); var w = C.ease(C.prog(tl, 0, 0.8)); if (wipeFrom && w < 1) tornWipe(c, wipeFrom(r), 1940 * (1 - w)); } };
   }
   // o: {agenda, year, cards(r), age(tl), push: {at, to(r)}, pull: {from(r)}, cap}
   function segBoard(len, o) {
-    return { len: len, year: function () { return o.year; }, draw: function (c, tl, r) {
+    return { len: len, year: function () { return o.year; },
+      events: function () { var ev = []; if (o.pull) ev.push([0.05, 'whooshOut']); if (o.push) ev.push([o.push.at - 0.2, 'whooshIn']); if (o.cards && o.age) ev.push([0.62, 'clonk']); return ev; },
+      draw: function (c, tl, r) {
       var cfg = { road: r, year: o.year, agenda: o.agenda, cards: o.cards ? o.cards(r) : [], cardAge: o.age ? o.age(tl) : null };
       var f = 0, img = null, a = 0;
       if (o.push) { img = o.push.to(r); a = C.prog(tl, o.push.at - 0.3, o.push.at); f = C.prog(tl, o.push.at, len); }
@@ -125,35 +163,36 @@
     } };
   }
   function segBatch(len, wipeFrom) {
-    return { len: len, year: function () { return 2036; }, draw: function (c, tl, r) {
+    return { len: len, cutSfx: 'rip', year: function () { return 2036; }, events: function () { return [[1.25, 'pop'], [1.875, 'popLow', 1], [2.5, 'popLow', 2], [3.125, 'popLow', 3]]; }, draw: function (c, tl, r) {
       BATCH.draw(c, { road: r }, tl, len);
       var w = C.ease(C.prog(tl, 0, 0.8)); if (wipeFrom && w < 1) tornWipe(c, wipeFrom(r), 1940 * (1 - w));
     } };
   }
   function segFlash(len, from) {
-    return { len: len, year: function () { return 2030; }, draw: function (c, tl, r) { c.drawImage(from(r), 0, 0, 1920, 1080); C.use(c); C.flash(0.95 * tl / len); } };
+    return { len: len, year: function () { return 2030; }, events: function () { return [[0, 'ding']]; }, draw: function (c, tl, r) { c.drawImage(from(r), 0, 0, 1920, 1080); C.use(c); C.flash(0.95 * tl / len); } };
   }
   function shot(id, segs) { var d = 0; segs.forEach(function (sg) { sg.t0 = d; d += sg.len; }); SHOTS[id] = { segs: segs, dur: Math.round(d * 1000) / 1000 }; }
-  var HOME_LEN = 6.5, BATCH_LEN = 7.5, PUSH = 2.2, PULL = 2.2;
+  // on the 96 bpm grid: pushes and pulls are 4 beats, the batch 12 (story v3: the places replace the generic home scenes)
+  var BATCH_LEN = 7.5, PUSH = 2.5, PULL = 2.5;
   function c1Card(r) { return [r.c1]; }
   function bothCards(r) { return [r.c1, r.c2]; }
   shot('prologue', [segInner('prologue', 0, 15), segBoard(PULL, { agenda: 0, year: 2026, pull: { from: clipStill('prologue', 15) }, cap: 'Upstairs, the *board* meets.' })]);
   shot('wait-1', [segBoard(4, { agenda: 0, year: 2026 })]);
   ['ban', 'build'].forEach(function (k) {
     shot('c1-' + k, [
-      segBoard(PUSH, { agenda: 0, year: 2026, cards: c1Card, age: function (tl) { return [tl - 0.6]; }, push: { at: 1.0, to: clipStill('c1-' + k, 0) } }),
+      segBoard(PUSH, { agenda: 0, year: 2026, cards: c1Card, age: function (tl) { return [tl - 0.6]; }, push: { at: 1.25, to: clipStill('c1-' + k, 0) } }),
       segInner('c1-' + k, 0, 15),
-      segHome(1, HOME_LEN, clipStill('c1-' + k, 15)),
-      segBoard(PULL, { agenda: 1, year: 2027, cards: c1Card, pull: { from: homeStill(1, HOME_LEN, HOME_LEN) }, cap: 'Back to the *board*. 2027.' })]);
+      segPlace('bedroom', clipStill('c1-' + k, 15)),
+      segBoard(PULL, { agenda: 1, year: 2027, cards: c1Card, pull: { from: placeStill('bedroom', CHAPTERS.placeOf('bedroom').dur) }, cap: 'Back to the *board*. 2027.' })]);
   });
   shot('wait-2', [segBoard(4, { agenda: 1, year: 2027, cards: c1Card })]);
   Agamoto.ROADS.forEach(function (rd) {
     shot('c2-' + rd, [
-      segBoard(PUSH, { agenda: 1, year: 2027, cards: bothCards, age: function (tl) { return [9, tl - 0.6]; }, push: { at: 1.0, to: clipStill('c2-' + rd, 0) } }),
-      segInner('c2-' + rd, 0, 15),
-      segHome(2, HOME_LEN, clipStill('c2-' + rd, 15))]);
+      segBoard(PUSH, { agenda: 1, year: 2027, cards: bothCards, age: function (tl) { return [9, tl - 0.6]; }, push: { at: 1.25, to: clipStill('c2-' + rd, 0) } }),
+      segInner('c2-' + rd, 0, CLIPS['c2-' + rd].dur),          // 2027 classroom → staff room → 2028 shop → 2029 street → 2030 results
+      segInner('mid-' + rd, 0, CLIPS['mid-' + rd].dur)]);      // 2032 Meera → 2034 Sunanda's office
     shot('end-' + rd, [
-      segFlash(0.15, homeStill(2, HOME_LEN, HOME_LEN)),
+      segFlash(0.15, clipStill('mid-' + rd, CLIPS['mid-' + rd].dur)),
       segInner('end-' + rd, 0.12, 11.88),
       segBatch(BATCH_LEN, clipStill('end-' + rd, 12)),
       segBoard(PULL, { agenda: 2, year: 2036, cards: bothCards, pull: { from: batchStill(BATCH_LEN, BATCH_LEN) }, cap: 'Back to the *board*: the 2036 report.' })]);
@@ -165,14 +204,20 @@
   // a road Claude designed: its 2036 film and the batch (played live on the home page)
   shot('film-custom', [segInner('end-build-retrain', 0, 12), segBatch(BATCH_LEN, clipStill('end-build-retrain', 12))]);
 
+  // the shot's sound events: a cut sound at each segment boundary + every segment's own events
+  function shotEvents(id, road) {
+    var ev = []; SHOTS[id].segs.forEach(function (sg, i) { if (i) ev.push([sg.t0, sg.cutSfx || 'swish']); (sg.events ? sg.events(road) : []).forEach(function (e) { ev.push([sg.t0 + e[0]].concat(e.slice(1))); }); });
+    return ev;
+  }
   function frame(id, t, roadId) {
     var road = (roadId && typeof roadId === 'object') ? roadId : Agamoto.road(roadFor(id, roadId)), d = dur(id); t = Math.max(0, Math.min(d, t));
     ctx.setTransform(S, 0, 0, S, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#f4ead7'; ctx.fillRect(0, 0, 1920, 1080);
     C.use(ctx);
     try {
-      var sh = SHOTS[id];
-      if (sh) { var sg = segAt(sh, t); ctx.save(); sg.draw(ctx, Math.min(sg.len, t - sg.t0), road); ctx.restore(); }
+      var sh = SHOTS[id], pl = place(id);
+      if (pl && !CLIPS[id]) { ctx.save(); pl.draw(ctx, t, road); ctx.restore(); }
+      else if (sh) { var sg = segAt(sh, t); ctx.save(); sg.draw(ctx, Math.min(sg.len, t - sg.t0), road); ctx.restore(); }
       else if (CLIPS[id]) { ctx.save(); CLIPS[id].draw(ctx, t, road); ctx.restore(); } else placeholder(ctx, id, t, road);
     }
     catch (e) { ctx.restore && ctx.restore(); placeholder(ctx, id + ' (error: ' + e.message + ')', t, road); console.error(e); }
@@ -180,8 +225,11 @@
     C.vignette(0.42); if (!Q.get('nograin')) C.grain(t, 0.45); hud(ctx, id, t, road);
   }
   var ready = fetch('company.json').then(function (r) { return r.json(); }).then(function (co) { Agamoto.init(co); return document.fonts.load('italic 40px "Instrument Serif"'); })
-    .then(function () { return Promise.all([document.fonts.load('700 30px "Barlow Condensed"'), document.fonts.load('800 30px "Barlow Condensed"'), document.fonts.load('500 30px "Barlow Condensed"')]); });
-  window.AGAMOTO = { ready: ready, dur: dur, frame: frame, canvas: cv, yearAt: yearAt, roadFor: roadFor };
+    .then(function () { return Promise.all([document.fonts.load('700 30px "Barlow Condensed"'), document.fonts.load('800 30px "Barlow Condensed"'), document.fonts.load('500 30px "Barlow Condensed"'), document.fonts.load('30px "Tiro Devanagari Hindi"'), C.loadPhotos()]); });
+  // the score for a clip or shot: groove.js on the beat grid + one sound per visible event (render.mjs bakes it into the MP4)
+  function soundSpec(id, roadId) { var road = (roadId && typeof roadId === 'object') ? roadId : Agamoto.road(roadFor(id, roadId)); return SOUND.spec(id, road, dur(id), SHOTS[id] ? shotEvents(id, road) : null); }
+  function score(id, roadId) { var sp = soundSpec(id, roadId); return function (ac) { buildGroove(ac, sp); }; }
+  window.AGAMOTO = { ready: ready, dur: dur, frame: frame, canvas: cv, yearAt: yearAt, roadFor: roadFor, soundSpec: soundSpec, score: score };
 
   // ---- live playback ----
   var clipQ = Q.get('clip'), roadQ = Q.get('road') || 'build-retrain';

@@ -3,6 +3,7 @@
 //   node render.mjs wait-1 c1-ban      render only these ids (also 'rewind-<road>', 'wait-2-<c1>')
 //   node render.mjs --walkthrough      concatenate the demo path into walkthrough.mp4
 //   node render.mjs --serve [port]     static server with Range support (for the player), default port 8080
+//   node render.mjs place-shop --road ban-cut   preview one PLACES scene with its sound → qc/place-shop@ban-cut.mp4
 import { chromium } from 'playwright';
 import http from 'http'; import fs from 'fs'; import path from 'path'; import os from 'os';
 import { spawn } from 'child_process'; import { fileURLToPath } from 'url';
@@ -31,17 +32,21 @@ function serve(port = 0) {
 }
 
 // output id -> { clip, road, out[], }
+// --road <road> picks the road for place-<name> previews; they go to qc/place-<name>@<road>.mp4 (with sound)
+const ROAD_ARG = (() => { const i = process.argv.indexOf('--road'); if (i < 0) return null; const r = process.argv[i + 1]; process.argv.splice(i, 2); return r; })();
 function spec(id) {
   let m;
+  if (/^place-/.test(id)) { const r = ROAD_ARG || DEFAULT_ROAD; return { clip: id, road: r, outs: [`${id}@${r}`], dir: path.join(ROOT, 'qc') }; }
   if (id === 'rewind') return { clip: 'rewind', road: DEFAULT_ROAD, outs: ['rewind', 'rewind-build-retrain'] };
   if ((m = id.match(/^rewind-(\w+-\w+)$/))) return { clip: 'rewind', road: m[1], outs: [id] };
   if ((m = id.match(/^wait-2-(ban|build)$/))) return { clip: 'wait-2', road: m[1] + '-retrain', outs: [id] };
   if (id === 'wait-2') return { clip: 'wait-2', road: DEFAULT_ROAD, outs: ['wait-2', 'wait-2-build'] };
-  if ((m = id.match(/^(?:c2|end)-(\w+-\w+)$/))) return { clip: id, road: m[1], outs: [id] };
-  if ((m = id.match(/^c1-(\w+)$/))) return { clip: id, road: m[1] + '-retrain', outs: [id] };
+  if ((m = id.match(/^(?:c2|end|mid)-(\w+-\w+)$/))) return { clip: id, road: m[1], outs: [id] };
+  if ((m = id.match(/^(?:c1|home)-(\w+)$/))) return { clip: id, road: m[1] + '-retrain', outs: [id] };
   return { clip: id, road: DEFAULT_ROAD, outs: [id] };
 }
 
+// each id is a whole shot (story.html SHOTS: board push → clip → places → board pull), rendered with its score
 const DEFAULT_ORDER = ['prologue', 'wait-1', 'wait-2', 'c1-build', 'c2-build-retrain', 'end-build-retrain', 'rewind',
   'c1-ban', 'wait-2-ban', 'c2-ban-retrain', 'end-ban-retrain', 'rewind-ban-retrain',
   'c2-build-cut', 'c2-ban-cut', 'end-build-cut', 'end-ban-cut', 'rewind-build-cut', 'rewind-ban-cut'];
@@ -53,10 +58,10 @@ async function renderOne(browser, port, id) {
     await page.goto(`http://localhost:${port}/story.html?clip=${sp.clip}&road=${sp.road}&s=0.6667&static=1`);
     await page.evaluate(() => AGAMOTO.ready);
     const dur = await page.evaluate(c => AGAMOTO.dur(c), sp.clip), n = Math.round(dur * FPS);
-    fs.mkdirSync(CLIPS, { recursive: true });
-    const tmp = path.join(CLIPS, `.${sp.outs[0]}.tmp.mp4`);
+    const OUT = sp.dir || CLIPS; fs.mkdirSync(OUT, { recursive: true });
+    const tmp = path.join(OUT, `.${sp.outs[0]}.tmp.mp4`);
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
-      '-c:v', 'libx264', '-crf', '26', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-vf', 'scale=1280:720', '-an', '-f', 'mp4', tmp], { stdio: ['pipe', 'inherit', 'inherit'] });
+      '-c:v', 'libx264', '-crf', '26', '-pix_fmt', 'yuv420p', '-vf', 'scale=1280:720', '-an', '-f', 'mp4', tmp], { stdio: ['pipe', 'inherit', 'inherit'] });
     const done = new Promise((res, rej) => { ff.on('close', c => c === 0 ? res() : rej(new Error('ffmpeg exit ' + c))); ff.on('error', rej); });
     ff.stdin.on('error', () => {});
     for (let i = 0; i < n; i++) {
@@ -65,8 +70,24 @@ async function renderOne(browser, port, id) {
       if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
     }
     ff.stdin.end(); await done;
-    for (const o of sp.outs) fs.copyFileSync(tmp, path.join(CLIPS, o + '.mp4'));
-    fs.unlinkSync(tmp);
+    // the score: groove.js rendered offline in the page (deterministic), fixed level (no per-clip normalising, so joined
+    // clips don't jump in loudness), muxed as AAC. A clip without sound would fail the animotion "never ship silent" rule.
+    const wav64 = await page.evaluate(async ([c, r, secs]) => {
+      const SR = 48000, ac = new OfflineAudioContext(2, Math.ceil(SR * secs), SR); AGAMOTO.score(c, r)(ac);
+      const buf = await ac.startRendering(), n = buf.length, L = buf.getChannelData(0), R = buf.getChannelData(1);
+      let peak = 1e-9; for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+      const g = peak > .97 ? .97 / peak : 1, dv = new DataView(new ArrayBuffer(44 + n * 4)), w = (o, str) => [...str].forEach((ch, i) => dv.setUint8(o + i, ch.charCodeAt(0)));
+      w(0, 'RIFF'); dv.setUint32(4, 36 + n * 4, true); w(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 2, true);
+      dv.setUint32(24, SR, true); dv.setUint32(28, SR * 4, true); dv.setUint16(32, 4, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, n * 4, true);
+      for (let i = 0; i < n; i++) { dv.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i] * g)) * 32767, true); dv.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i] * g)) * 32767, true); }
+      const bytes = new Uint8Array(dv.buffer); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return btoa(bin);
+    }, [sp.clip, sp.road, dur]);
+    const wav = path.join(OUT, `.${sp.outs[0]}.wav`), muxed = path.join(OUT, `.${sp.outs[0]}.mux.mp4`);
+    fs.writeFileSync(wav, Buffer.from(wav64, 'base64'));
+    await new Promise((res, rej) => { const m = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp, '-i', wav, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', '-movflags', '+faststart', muxed], { stdio: 'inherit' }); m.on('close', c => c === 0 ? res() : rej(new Error('mux exit ' + c))); });
+    for (const o of sp.outs) fs.copyFileSync(muxed, path.join(OUT, o + '.mp4'));
+    fs.unlinkSync(tmp); fs.unlinkSync(muxed); fs.mkdirSync(path.join(ROOT, 'qc', 'wav'), { recursive: true }); fs.renameSync(wav, path.join(ROOT, 'qc', 'wav', sp.outs[0] + '.wav'));
     console.log(`${sp.outs.join(' + ')}.mp4  ${n} frames  ${((Date.now() - t0) / 1000).toFixed(1)}s${errs.length ? '  (page errors: ' + [...new Set(errs)].slice(0, 3).join(' | ') + ')' : ''}`);
     return true;
   } catch (e) { console.log(`FAILED ${id}: ${e.message}`); return false; }
@@ -91,7 +112,7 @@ function walkthrough() {
   const list = path.join(os.tmpdir(), `agamoto-concat-${process.pid}.txt`);
   fs.writeFileSync(list, have.map(id => `file '${path.join(CLIPS, id + '.mp4')}'`).join('\n') + '\n');
   const r = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c:v', 'libx264', '-crf', '24', '-pix_fmt', 'yuv420p',
-    '-movflags', '+faststart', '-r', String(FPS), '-an', path.join(ROOT, 'walkthrough.mp4')], { stdio: 'inherit' });
+    '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', '-r', String(FPS), path.join(ROOT, 'walkthrough.mp4')], { stdio: 'inherit' });
   r.on('close', c => { fs.rmSync(list, { force: true }); console.log(c === 0 ? `walkthrough.mp4 from ${have.length} clips` : 'ffmpeg failed'); process.exitCode = c; });
 }
 

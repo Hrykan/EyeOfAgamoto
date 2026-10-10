@@ -54,13 +54,17 @@
   SET.dotPos = function (i) { return { x: L.screen.x + 36 + (i % 10) * 31, y: L.screen.y + 78 + Math.floor(i / 10) * 26 }; };
   SET.struggling = function (n) { var o = []; for (var i = 0; i < n; i++) if (STRUG[i]) o.push(i); return o; };
   SET.slots = SLOTS; SET.rank = RANK; SET.order = ORDER; SET.teacherSlots = TPOS;
+  // one teacher figure per TDIV teachers: this is one room of many, so 80 teachers show as 4 figures, not a crowd of 20
+  var TDIV = 20; SET.TDIV = TDIV;
+  // Aarav (cast.js) always sits at the same desk, in his blue shirt, so the classroom and the other places share him
+  var AARAV_FIG = { body: '#3f6fa8', skin: '#8d5a3c', hair: '#1b1714', legs: '#2c3442' }; SET.aaravSlot = function () { return ORDER[6]; };
 
   /* ---------- config ---------- */
   SET.config = function (road, yf) {
     var v = Agamoto.at(road, yf);
     return {
       year: yf, students: v.students, teachers: v.teachers, fees: v.fees, results: v.results,
-      seated: Math.round(v.students / 50), teacherFigs: Math.round(v.teachers / 4),
+      seated: Math.round(v.students / 50), teacherFigs: Math.round(v.teachers / TDIV),
       ai: road.c1 === 'build' && yf >= 2026.6, mentors: road.c2 === 'retrain' && yf >= 2027.5, ban: road.c1 === 'ban' && yf >= 2026.6,
       light: CL((yf - 2026) / 10), c1: road.c1, c2: road.c2,
       cards: (yf >= 2026.999 ? [road.c1] : []).concat(yf >= 2029.999 ? [road.c2] : [])
@@ -244,7 +248,7 @@
     drawWindow(c, cfg, t, dur);
     var aiA = cfg.aiAmt != null ? cfg.aiAmt : (cfg.ai ? 1 : 0), banA = cfg.banAmt != null ? cfg.banAmt : (cfg.ban ? 1 : 0);
     var phoneA = cfg.phoneAmt != null ? cfg.phoneAmt : ((cfg.ai || cfg.ban) ? 0 : 1), mentA = cfg.mentAmt != null ? cfg.mentAmt : (cfg.mentors ? 1 : 0);
-    var N = Math.min(SLOTS.length, cfg.students / 50), F = Math.min(TPOS.length, cfg.teachers / 4), sky = skyAt(cfg.year);
+    var N = Math.min(SLOTS.length, cfg.students / 50), F = Math.min(TPOS.length, cfg.teachers / TDIV), sky = skyAt(cfg.year);
     if (aiA > 0) drawScreen(c, N, aiA, t, dur);
     if (banA > 0) drawSign(c, banA, t, dur);
     // light shafts
@@ -259,7 +263,7 @@
       var rank = RANK[s.i], a = CL(N - rank), ov = cfg.seatFn ? cfg.seatFn(s.i, rank, s, t) : null;
       var states = ov ? (Array.isArray(ov) ? ov : [ov]) : (a > 0.002 ? [{ a: a, x: s.x, y: s.y, pose: 'sit', flip: s.i % 3 === 0 }] : []);
       items.push({ y: s.y, fn: function () {
-        var o = C.outfitFor(s.i), devA = 0;
+        var o = s.i === ORDER[6] ? AARAV_FIG : C.outfitFor(s.i), devA = 0;
         states.forEach(function (st) { if (st.a > 0.002) { fig(st.x, st.y, s.h, st.pose || 'sit', o, st.flip, s.i * 0.7, st.a, t, dur); if ((st.pose || 'sit') === 'sit') devA = Math.max(devA, st.a); } });
         drawDesk(c, s);
         if (devA > 0.01) {
@@ -309,38 +313,113 @@
   }
   function roadYear(id) { return id === 'prologue' || id === 'wait-1' ? 2026 : 2027; }
 
-  /* ---------- prologue ---------- */
+  /* ---------- prologue (animotion grammar: hook ≤ 3 s, push-through, close-ups with takes, pull-out to REST) ---------- */
+  // 24 beats at 96 bpm. 0–2.5 hook: a phone tutor slams onto a saffron sunburst, FREE stamp on beat 3 ·
+  // push-through ▸ 2.5–6.25 the classroom fills, a students tag counts up · cut ▸ 6.25–8.75 Aarav asks ·
+  // cut ▸ 8.75–11.25 Sunanda's take (worry → resolve), ONE YEAR stamp · cut ▸ 11.25–15 pull-out to REST (the wait-1 frame).
+  var B = C.BEAT;
+  function chatPhone(c, x, y, w, h, t, t0) {     // a phone with an AI-tutor chat typing in (local time from t0)
+    var lt = t - t0;
+    c.save(); c.fillStyle = '#1f1b18'; c.beginPath(); c.roundRect(x, y, w, h, 46); c.fill();
+    c.fillStyle = '#f4ead7'; c.beginPath(); c.roundRect(x + 18, y + 22, w - 36, h - 44, 30); c.fill();
+    c.fillStyle = P.tealDark; c.beginPath(); c.roundRect(x + 18, y + 22, w - 36, 92, [30, 30, 0, 0]); c.fill();
+    C.label('AI tutor · free', x + 50, y + 70, 30, '#f4ead7', 'left', 800);
+    c.fillStyle = '#7be7d4'; c.beginPath(); c.arc(x + w - 60, y + 68, 10, 0, TAU); c.fill();
+    var q = 'Explain torque, in Marathi', n = Math.round(q.length * CL((lt - 0.25) / 0.6));
+    if (n > 0) { c.fillStyle = '#d6efe9'; c.beginPath(); c.roundRect(x + w - 40 - 330, y + 150, 330, 74, 22); c.fill(); C.label(q.slice(0, n), x + w - 60, y + 196, 25, P.ink, 'right', 600); }
+    var r1 = C.back(CL((lt - 0.85) / 0.25)), r2 = C.back(CL((lt - 1.1) / 0.25));
+    if (r1 > 0) { c.save(); c.translate(x + 40, y + 252); c.scale(r1, r1); c.fillStyle = '#fff'; c.beginPath(); c.roundRect(0, 0, 360, 150, 22); c.fill();
+      c.font = '30px ' + C.FONTS.deva; c.fillStyle = P.ink; c.fillText('बल × अंतर = टॉर्क', 22, 58);
+      c.strokeStyle = P.saffron; c.lineWidth = 6; c.beginPath(); c.moveTo(30, 112); c.lineTo(320, 96); c.stroke(); c.fillStyle = P.tealDark; c.beginPath(); c.moveTo(160, 104); c.lineTo(146, 132); c.lineTo(174, 132); c.closePath(); c.fill(); c.restore(); }
+    if (r2 > 0) { c.save(); c.translate(x + 40, y + 420); c.scale(r2, r2); c.fillStyle = '#fff'; c.beginPath(); c.roundRect(0, 0, 300, 70, 22); c.fill(); C.label('Want a quiz? ✓', 22, 46, 28, P.tealDark, 'left', 700); c.restore(); }
+    c.restore();
+  }
+  function bust(c, who, x, y, w, h, o, flip) {     // a CAST close-up as a scissor-cut sticker; o = CAST options (h, face, …)
+    C.sticker(x, y, w, h, function (g) { CAST.draw(g, who, o.cx, o.cy, o.h, o); }, { res: 1, rimW: 9, dots: false });
+  }
   CLIPS.prologue = { dur: 15, draw: function (ctx, t, road) {
-    C.use(ctx); var dur = 15, cfg = SET.config(road, 2026), nSeats = Math.round(cfg.students / 50);
-    cfg.seatFn = function (si, rank, s) {
-      if (rank >= nSeats) return null;
-      var a0 = 0.2 + (rank / nSeats) * 5.2 + C.rand(1000 + rank)() * 0.25, f = (t - a0) / 1.5;
-      if (f >= 1) return null; if (f <= 0) return { a: 0 };
-      var sx = s.x < 960 ? -90 : 2010, e = C.easeOut(f), x = lerp(sx, s.x, e), y = lerp(s.y + 40, s.y + 26 * s.h / 100, 0.5 + 0.5 * e), fl = sx > s.x;
-      var sitA = CL((f - 0.78) / 0.2);
-      return [{ a: 1 - sitA, x: x, y: s.y + 26 * s.h / 100, pose: 'stand', flip: fl }, { a: sitA, x: x, y: s.y, pose: 'sit', flip: s.i % 3 === 0 }];
-    };
-    cfg.phoneFn = function (si, rank) { return C.prog(t, 6.2 + (rank / Math.max(1, nSeats)) * 1.4, 6.8 + (rank / Math.max(1, nSeats)) * 1.4); };
-    var asker = ORDER[Math.min(nSeats - 1, 6)], as = SLOTS[asker];
-    var cam = C.track(t, [{ t: 0, x: 960, y: 540, z: 1 }, { t: 8.4, x: 960, y: 540, z: 1 }, { t: 10, x: 960, y: 520, z: 1.45 }, { t: 11.8, x: 960, y: 520, z: 1.45 }, { t: 14, x: 960, y: 540, z: 1 }]);
-    C.withCam(cam, function () {
-      cfg.extra = function (items) {
-        var b = C.prog(t, 8.7, 9.2);
-        if (b > 0 && t < 11.6) items.push({ y: 2000, fn: function () {
-          var c = ctx; c.save(); c.globalAlpha *= fade(t, 8.7, 11.6, 0.25, 0.4); c.translate(as.x + 30, as.y - 0.9 * as.h); c.scale(0.6 + 0.4 * C.back(b), 0.6 + 0.4 * C.back(b));
-          C.paper(C.torn(-34, -28, 68, 56, 51, 2), P.paper, { lift: 4 }); C.label('?', 0, 2, 44, P.coral, 'center', 800); c.restore();
-        } });
+    C.use(ctx); var dur = 15, c = ctx;
+    // ---------- 1. hook (0 → 2.5), push-through at 2.5 ----------
+    function hook() {
+      C.cardboard('#e9a23b');
+      C.sunburst(960, 470, 140, 1500, 22, '#f6d58a', 0.55, C.T12(t) * 0.08);
+      var pp = C.prog(t, 0.12, 0.42);
+      C.popIn(960, 470, pp, function () { C.sticker(960 - 230, 70, 460, 800, function (g) { chatPhone(g, 0, 0, 460, 800, t, 0); }, { res: 1, rimW: 10 }); });
+      C.banner('A tutor in every phone', 960, 120, { size: 70, p: C.prog(C.T12(t), 0.3, 0.6), rot: -0.02, bg: '#fffdf7', seed: 21 });
+      C.inkStamp('Free', 1350, 600, C.prog(t, 3 * B - 0.12, 3 * B + 0.38), { size: 120, col: P.tealDark, rot: -0.16, seed: 9 });
+      C.confetti(5, t, '#fff3d6', 12, [0, 120, 1920, 760]);
+    }
+    // ---------- 2. the classroom fills (2.5 → 6.25) and 5. the pull-out (11.25 → 15) ----------
+    function room(camKeys) {
+      var cfg = SET.config(road, 2026), nSeats = Math.round(cfg.students / 50);
+      cfg.seatFn = function (si, rank, s) {
+        var a0 = 2.55 + (rank / nSeats) * 2.4 + C.rand(1000 + rank)() * 0.2, f = (t - a0) / 1.1;
+        if (f >= 1) return null; if (f <= 0) return { a: 0 };
+        var sx = s.x < 960 ? -90 : 2010, e = C.easeOut(f), x = lerp(sx, s.x, e), fl = sx > s.x, sitA = CL((f - 0.78) / 0.2);
+        return [{ a: 1 - sitA, x: x, y: s.y + 26 * s.h / 100, pose: 'stand', flip: fl }, { a: sitA, x: x, y: s.y, pose: 'sit', flip: s.i % 3 === 0 }];
       };
-      SET.draw(ctx, cfg, t, dur);
-      var np = C.prog(t, 6.6, 7.4);
-      if (np > 0 && t < 9.4) { ctx.save(); ctx.globalAlpha *= fade(t, 6.6, 9.4, 0.3, 0.5); C.callout('Free AI tutor · any topic · any language', 560, 470, 500, 600, np, { size: 30, bg: P.mustard, rot: -2 }); ctx.restore(); }
-    });
-    cap(ctx, 'Pune, 2026. Vidya Classes opens at seven.', [], t, 0.3, 4.6);
-    cap(ctx, 'Every phone now holds a *free* AI tutor.', [], t, 5.2, 8.4);
-    cap(ctx, '“Ma\'am, why come to class?”', ['why'], t, 8.8, 11.9);
-    cap(ctx, 'Sunanda has one year to answer.', [], t, 12.0, 13.9);
+      cfg.phoneFn = function (si, rank) { return C.prog(t, 4.4 + (rank / Math.max(1, nSeats)) * 1.2, 4.7 + (rank / Math.max(1, nSeats)) * 1.2); };
+      var cam = C.track(t, camKeys);
+      if (t < 14.4) cam = C.drift(cam, t);
+      C.withCam(cam, function () { SET.draw(ctx, cfg, t, dur); });
+      return nSeats;
+    }
+    var push = 0, out = 0;
+    if (t < 2.5) {
+      if (t > 2.5 - 0.26) { var u = 1 - (2.5 - t) / 0.26; C.pushFx(1 + 0.24 * u * u, 14 * u * u, hook); } else hook();
+      cap(c, 'Pune, 2026. Every phone holds a *free* AI tutor.', [], t, 0.3, 2.45, 880);
+      return;
+    }
+    if (t < 6.25) {
+      var drawRoom = function () { room([{ t: 2.5, x: 960, y: 540, z: 1.0 }, { t: 6.25, x: 960, y: 520, z: 1.07 }]); };
+      if (t < 2.5 + 0.32) { var v = C.easeOut((t - 2.5) / 0.32); C.pushFx(lerp(1.22, 1, v), 14 * (1 - v), drawRoom); } else drawRoom();
+      var seated = 0, nS = Math.round(SET.config(road, 2026).students / 50);
+      for (var k = 0; k < nS; k++) { var a0 = 2.55 + (k / nS) * 2.4 + C.rand(1000 + k)() * 0.2; if (t > a0 + 1.0) seated++; }
+      var count = Math.round(2000 * seated / nS), tp = C.prog(C.T12(t), 2.9, 3.2);
+      if (tp > 0) { c.save(); c.translate(1500, 210); c.rotate(0.03); var ks = C.countScale(count, 0, 2000, 0.85, 1.25) * C.back(tp); c.scale(ks, ks);
+        C.paperPiece(C.tornRect2(-190, -62, 380, 124, 77, 4, 'tb'), '#fffdf7', { sy: 8 }); C.label(count.toLocaleString('en-IN') + ' students', 0, 12, 52, P.tealDark, 'center', 800); c.restore(); }
+      C.banner('Vidya Classes · est. 2009', 640, 170, { size: 56, p: C.prog(C.T12(t), 2.8, 3.1), rot: -0.025, seed: 33 });
+      cap(c, 'Vidya Classes opens at seven: two thousand *students*.', [], t, 2.75, 6.2, 880);
+      return;
+    }
+    // ---------- 3. Aarav asks (6.25 → 8.75) ----------
+    if (t < 8.75) {
+      C.cardboard('#2f7f7a'); C.zigzag(120, 980, 1800, 16, '#3d9a93', 9, 40); C.confetti(8, t, '#7fc7bf', 10, [0, 0, 1920, 900]);
+      var o = { face: 'smile', t: t, look: [0.4, 0], armR: [2.0, 1.6], holdR: 'phone', glow: 1, pivot: 'chest' };
+      o = CAST.withTake(o, 'realize', t, 6.25 + B - 0.3);
+      if (t > 7.0 && t < 8.1) o.face = 'talk';
+      var lift = C.lerp(30, 0, C.easeOut(C.prog(t, 6.25, 6.6)));
+      bust(c, 'aarav', 300, 60 + lift, 980, 1080, Object.assign(o, { cx: 470, cy: 2680, h: 2600 }));
+      var bp = C.prog(C.T12(t), 7.0, 7.25);
+      if (bp > 0) C.popIn(1430, 330, bp, function () {
+        C.paperPiece(C.tornRect2(1080, 200, 700, 250, 61, 5), '#fffdf7', { sy: 9 });
+        c.save(); c.fillStyle = '#fffdf7'; c.beginPath(); c.moveTo(1150, 430); c.lineTo(1080, 520); c.lineTo(1240, 440); c.closePath(); c.fill(); c.restore();
+        c.save(); c.font = 'italic 64px ' + C.FONTS.serif; c.fillStyle = P.ink; c.textAlign = 'center'; c.fillText('“Ma\'am, why', 1430, 310); c.fillText('come to class?”', 1430, 390); c.restore();
+        C.markUnder(1250, 1610, 412, C.prog(t, 7.4, 7.9), P.saffron, 7);
+      });
+      C.banner('Aarav · 14 · Class 9', 640, 150, { size: 50, p: C.prog(C.T12(t), 6.4, 6.65), rot: -0.03, seed: 45, bg: '#e3b23c' });
+      cap(c, 'Aarav, 14, has the answer on his phone.', [], t, 6.4, 8.7, 880);
+      return;
+    }
+    // ---------- 4. Sunanda's take (8.75 → 11.25) ----------
+    if (t < 11.25) {
+      C.cardboard('#8c2a2a'); C.sunburst(1250, 420, 120, 1300, 18, '#a8463c', 0.6, -C.T12(t) * 0.06);
+      var so = { t: t, look: [-0.35, 0], face: 'neutral', flip: true, pivot: 'chest' };
+      so = t < 10.0 ? CAST.withTake(so, 'worry', t, 15 * B - 0.32) : CAST.withTake(so, 'resolve', t, 17 * B - 0.32);
+      bust(c, 'sunanda', 700, 50, 1000, 1080, Object.assign(so, { cx: 500, cy: 2700, h: 2600 }));
+      var cp = C.prog(C.T12(t), 9.2, 9.5);
+      if (cp > 0) C.popIn(420, 520, cp, function () {
+        C.sticker(240, 330, 340, 380, function (g) { g.fillStyle = '#fffdf7'; g.fillRect(0, 0, 340, 380); g.fillStyle = P.coral; g.fillRect(0, 0, 340, 90);
+          C.label('Calendar', 170, 58, 40, '#fffdf7', 'center', 800); C.label('2026', 170, 230, 150, P.ink, 'center', 800); C.label('Jan → Dec', 170, 320, 40, P.inkSoft, 'center', 700); }, { res: 1, rimW: 8 });
+      });
+      C.inkStamp('One year', 430, 760, C.prog(t, 17 * B - 0.12, 17 * B + 0.38), { size: 78, col: '#fffdf7', rot: -0.1, bg: '#8c2a2a', seed: 13 });
+      cap(c, '“Why come to class?” Sunanda has one *year* to answer.', [], t, 8.9, 11.2, 880);
+      return;
+    }
+    // ---------- 5. pull-out to REST (the frame wait-1 starts on) ----------
+    room([{ t: 11.25, x: 980, y: 430, z: 1.55 }, { t: 12.0, x: 980, y: 430, z: 1.55 }, { t: 14.4, x: 960, y: 540, z: 1 }]);
+    cap(c, 'Every choice from here plays out in ten *futures*.', [], t, 11.6, 14.3, 880);
   } };
-
   /* ---------- waits ---------- */
   CLIPS['wait-1'] = { dur: 4, draw: function (ctx, t, road) {
     C.use(ctx); var cfg = SET.config(road, 2026); C.withCam(REST, function () { SET.draw(ctx, cfg, t, 4); });
@@ -348,6 +427,16 @@
   CLIPS['wait-2'] = { dur: 4, draw: function (ctx, t, road) {
     C.use(ctx); var cfg = SET.config(road, 2027); C.withCam(REST, function () { SET.draw(ctx, cfg, t, 4); });
   } };
+
+  /* ---------- reaction close-up (animotion: a two- to three-beat cut-in between story shots) ---------- */
+  function closeUp(c, t, o) {
+    C.cardboard(o.ground); if (o.burst) C.sunburst(o.bx || 1300, o.by || 420, 120, 1400, 20, o.burst, 0.55, C.T12(t) * 0.07 * (o.spin || 1));
+    C.confetti(o.seed || 3, t, o.dots || '#fff3d6', 10, [0, 0, 1920, 900]);
+    var co = CAST.withTake(Object.assign({ t: t, face: 'neutral', pivot: 'chest' }, o.cast), o.take, t, o.t0);
+    var lift = C.lerp(26, 0, C.easeOut(C.prog(t, o.from, o.from + 0.35)));
+    C.sticker(o.x, 50 + lift, 1000, 1080, function (g) { CAST.draw(g, o.who, 500, 2700, 2600, co); if (o.extra) o.extra(g); }, { res: 1, rimW: 9, dots: false });
+    if (o.banner) C.banner(o.banner, o.bannerX || 640, 150, { size: 50, p: C.prog(C.T12(t), o.from + 0.12, o.from + 0.4), rot: -0.03, seed: 51, bg: o.bannerBg || '#fffdf7' });
+  }
 
   /* ---------- c1 ---------- */
   function c1Year(t) { return 2026 + C.ease(C.prog(t, 1.5, 13.5)); }
@@ -357,16 +446,21 @@
     cfg.aiAmt = C.ease(C.prog(t, 3.8, 6.2)); cfg.phoneAmt = 1 - C.prog(t, 2.6, 4.4); cfg.ai = true;
     cfg.phoneFn = null; var tabAmt = C.prog(t, 2.6, 4.4);
     var nS = Math.round(cfg.students / 50);
-    var cam = C.track(t, [{ t: 0, x: 960, y: 540, z: 1 }, { t: 2.5, x: 960, y: 540, z: 1 }, { t: 5.2, x: 1100, y: 430, z: 1.35 }, { t: 10.5, x: 1100, y: 430, z: 1.35 }, { t: 13.6, x: 960, y: 540, z: 1 }]);
+    var cam = C.track(t, [{ t: 0, x: 960, y: 540, z: 1 }, { t: 2.5, x: 960, y: 540, z: 1 }, { t: 5.2, x: 1100, y: 430, z: 1.35 }, { t: 10.5, x: 1100, y: 430, z: 1.35 }, { t: 21 * B, x: 1040, y: 470, z: 1.2 }, { t: 14.4, x: 960, y: 540, z: 1 }]);
     C.withCam(cam, function () {
       SET.draw(ctx, cfg, t, dur);
       var sg = SET.struggling(nS).slice(0, 3), rp = C.prog(t, 7.2, 8.4);
       sg.forEach(function (i, k) { var p = SET.dotPos(i); ctx.save(); ctx.globalAlpha *= fade(t, 7.2, 11.8, 0.1, 0.5); C.ring(p.x, p.y, 18, 17, CL(rp * 1.5 - k * 0.2), P.coral, 4); ctx.restore(); });
       if (sg.length && t > 7.8 && t < 11.8) { var p0 = SET.dotPos(sg[0]); ctx.save(); ctx.globalAlpha *= fade(t, 7.8, 11.8, 0.3, 0.5); C.callout('Teacher sees who struggles', 1050, 505, p0.x, p0.y + 14, C.prog(t, 7.8, 8.8), { size: 28, bg: P.mustard }); ctx.restore(); }
     });
+    if (t >= 18 * B && t < 21 * B) {       // cut-in: Aarav with the institute tablet, a joy take on beat 19
+      closeUp(ctx, t, { ground: '#2f7f7a', burst: '#3d9a93', who: 'aarav', x: 380, from: 18 * B, take: 'joy', t0: 19 * B - 0.3, seed: 12,
+        cast: { look: [0.5, 0.4], armL: [1.0, 1.2], armR: [1.1, 1.0], holdR: 'tablet', glow: 1 }, banner: 'Aarav · practising with AI', bannerBg: '#e3b23c' });
+      var sp = C.prog(t, 19 * B - 0.12, 19 * B + 0.38); C.inkStamp('3 mistakes → 0', 1460, 620, sp, { size: 68, col: '#fffdf7', bg: '#2f7f7a', rot: -0.08, seed: 17 });
+    }
     cap(ctx, 'Every student gets an AI tutor, in every class.', [], t, 1.0, 4.6);
     cap(ctx, 'And the teacher sees, at a glance, who is *struggling*.', [], t, 7.0, 11.0);
-    cap(ctx, '2027. The room hums.', [], t, 11.3, 13.4);
+    cap(ctx, '2027. The room *hums*.', [], t, 11.4, 13.0, 880);
   } };
   CLIPS['c1-ban'] = { dur: 15, draw: function (ctx, t, road) {
     C.use(ctx); var dur = 15, cfg = SET.config(road, c1Year(t)), v1 = Agamoto.at(road, 2027), v0 = Agamoto.at(road, 2026);
@@ -376,7 +470,7 @@
     cfg.phoneFn = function (si, rank) { var s0 = 2 + (rank % 13) / 13 * 3.4; return 1 - C.prog(t, s0, s0 + 0.4); };
     cfg.basketN = Math.floor(14 * C.prog(t, 2.6, 6.2));
     var nS0 = Math.round(v0.students / 50), nS1 = Math.round(v1.students / 50);
-    var cam = C.track(t, [{ t: 0, x: 960, y: 540, z: 1 }, { t: 1.8, x: 960, y: 540, z: 1 }, { t: 3.2, x: 520, y: 620, z: 1.3 }, { t: 6.4, x: 520, y: 620, z: 1.3 }, { t: 8.6, x: 960, y: 540, z: 1 }]);
+    var cam = C.track(t, [{ t: 0, x: 960, y: 540, z: 1 }, { t: 1.8, x: 960, y: 540, z: 1 }, { t: 3.2, x: 520, y: 620, z: 1.3 }, { t: 6.4, x: 520, y: 620, z: 1.3 }, { t: 8.6, x: 960, y: 540, z: 1 }, { t: 21 * B, x: 1300, y: 600, z: 1.25 }, { t: 14.4, x: 960, y: 540, z: 1 }]);
     C.withCam(cam, function () {
       cfg.extra = function (items) {
         // phones flying into the basket
@@ -401,39 +495,41 @@
       SET.draw(ctx, cfg, t, dur);
       var sp = C.prog(t, 5.4, 6.2); if (sp > 0 && t < 7.4) { ctx.save(); ctx.globalAlpha *= fade(t, 5.4, 7.4, 0.1, 0.5); C.stamp('No AI', 1115, 520, sp, { size: 70, rot: -5 }); ctx.restore(); }
     });
+    if (t >= 18 * B && t < 21 * B) {       // cut-in: Aarav looks at the empty desks, a sag take on beat 19
+      closeUp(ctx, t, { ground: '#8c6a3b', burst: '#9c7a4a', who: 'aarav', x: 380, from: 18 * B, take: 'sag', t0: 19 * B - 0.4, seed: 14, spin: -1,
+        cast: { look: [-0.6, 0.2] }, banner: 'Aarav · phone in the basket', bannerBg: '#e3b23c' });
+      var sp2 = C.prog(t, 19 * B - 0.12, 19 * B + 0.38); C.inkStamp('3 seats empty', 1460, 620, sp2, { size: 68, col: '#fffdf7', bg: '#8c6a3b', rot: -0.08, seed: 19 });
+    }
     cap(ctx, 'Phones go into the basket. AI stays outside.', [], t, 1.0, 5.0);
-    cap(ctx, 'A few families *leave*, for places that teach with it.', [], t, 7.6, 11.4);
-    cap(ctx, '2027. A quieter room.', [], t, 11.6, 13.4);
+    cap(ctx, 'A few families *leave*, for places that teach with it.', [], t, 7.6, 11.2);
+    cap(ctx, '2027. A quieter *room*.', [], t, 11.4, 13.0, 880);
   } };
 
   /* ---------- c2 ---------- */
-  function luckOverlay(ctx, t, road) {
-    var Y = [[2028, 4, 6.5, 620, 330], [2029, 7.5, 10, 1080, 360], [2030, 10.5, 13, 860, 300]];
-    Y.forEach(function (k, i) {
-      var ev = road.luck.filter(function (l) { return l.year === k[0]; })[0], a = k[1], b = k[2] + 1.1;
-      if (t < a || t > b) return;
-      ctx.save(); ctx.globalAlpha *= fade(t, a, b, 0.2, 0.5);
-      if (ev && ev.hit) C.headline(k[0], ev.headline, k[3], k[4], C.prog(t, a, a + 1.2), ev.sign, 3 + i * 2);
-      else { C.paper(C.torn(760, 150, 400, 56, 61 + i, 3), P.paper, { lift: 4 }); C.label(k[0] + ' · a quiet year', 960, 178, 32, P.inkSoft, 'center', 700); }
-      ctx.restore();
-    });
-  }
-  function c2(kind) {
-    return { dur: 15, draw: function (ctx, t, road) {
-      C.use(ctx); var dur = 15, year = 2027 + 3 * C.prog(t, 1, 14), cfg = SET.config(road, year), cutRoad = road.c2 === 'cut';
-      cfg.cards = [road.c1, road.c2]; cfg.cardAge = [9, t - 0.6]; cfg.ban = road.c1 === 'ban'; cfg.ai = road.c1 === 'build';
+  // class27-<road>: the 2027 classroom beat right after the second vote (7 s). chapters.js opens c2-<road> with it,
+  // then tears into the 2027–2030 places. The luck events now have their own scenes, so no overlay here.
+  var CAP27 = {
+    'build-cut': ['AI explains, so fewer teachers. Fees come *down*.', 'Some teachers carry out their boxes.'],
+    'ban-cut': ['Fees drop to fight the free *apps*.', 'Some teachers carry out their boxes.'],
+    'build-retrain': ['AI explains. Teachers become *mentors*.', 'Small groups. Parents who get a call back.'],
+    'ban-retrain': ['No AI in class. Teachers become *mentors*.', 'Small groups, no screens. Parents kept close.']
+  };
+  function class27(kind) {
+    return { dur: 7.5, year: 2027, draw: function (ctx, t, road) {
+      C.use(ctx); var dur = 7.5, year = 2027, cfg = SET.config(road, year), cutRoad = road.c2 === 'cut';
+      cfg.cards = [road.c1, road.c2]; cfg.cardAge = [9, t - 0.6]; cfg.ban = road.c1 === 'ban'; cfg.ai = road.c1 === 'build'; cfg.mentors = false;
       var camKeys = cutRoad
-        ? [{ t: 0, x: 960, y: 540, z: 1 }, { t: 2, x: 960, y: 540, z: 1 }, { t: 3.5, x: 900, y: 560, z: 1.2 }, { t: 7.5, x: 900, y: 560, z: 1.2 }, { t: 10, x: 960, y: 540, z: 1 }]
-        : [{ t: 0, x: 960, y: 540, z: 1 }, { t: 2.5, x: 960, y: 540, z: 1 }, { t: 4, x: 960, y: 740, z: 1.3 }, { t: 9, x: 960, y: 740, z: 1.3 }, { t: 12, x: 960, y: 540, z: 1 }];
-      var v0 = Agamoto.at(road, 2027), v1 = Agamoto.at(road, 2030), F0 = Math.min(TPOS.length, v0.teachers / 4), F1 = Math.min(TPOS.length, v1.teachers / 4);
-      var nLeave = cutRoad ? Math.min(6, Math.max(0, Math.ceil(F0 - 0.001) - Math.floor(F1 + 0.001))) : 0, firstLeave = Math.ceil(F0 - 0.001) - nLeave;
+        ? [{ t: 0, x: 960, y: 540, z: 1 }, { t: 1.2, x: 960, y: 540, z: 1 }, { t: 2.4, x: 900, y: 560, z: 1.2 }, { t: 7.5, x: 875, y: 566, z: 1.25 }]
+        : [{ t: 0, x: 960, y: 540, z: 1 }, { t: 1.6, x: 960, y: 540, z: 1 }, { t: 3.0, x: 960, y: 740, z: 1.3 }, { t: 7.5, x: 978, y: 746, z: 1.35 }];
+      var v0 = Agamoto.at(road, 2027), v1 = Agamoto.at(road, 2030), F0 = Math.min(TPOS.length, v0.teachers / TDIV), F1 = Math.min(TPOS.length, v1.teachers / TDIV);
+      var nLeave = cutRoad ? Math.min(6, Math.max(1, Math.ceil(F0 - 0.001) - Math.floor(F1 + 0.001))) : 0, firstLeave = Math.ceil(F0 - 0.001) - nLeave;
       if (cutRoad) {
-        cfg.teachFn = function (i) { if (i >= firstLeave && i < firstLeave + nLeave) return { a: t < 2.6 + (i - firstLeave) * 0.6 ? CL(F0 - i) : 0 }; return null; };
-      } else { cfg.mentAmt = C.prog(t, 2.8, 6.6); }
+        cfg.teachFn = function (i) { if (i >= firstLeave && i < firstLeave + nLeave) return { a: t < 2.0 + (i - firstLeave) * 0.5 ? CL(F0 - i) : 0 }; return null; };
+      } else { cfg.mentAmt = C.prog(t, 1.8, 4.6); }
       C.withCam(C.track(t, camKeys), function () {
         cfg.extra = function (items) {
           for (var q = 0; q < nLeave; q++) (function (q) {
-            var tp = TPOS[firstLeave + q], w0 = 2.6 + q * 0.6, f = (t - w0) / 3.2; if (f <= 0 || f >= 1) return;
+            var tp = TPOS[firstLeave + q], w0 = 2.0 + q * 0.5, f = (t - w0) / 3.2; if (!tp || f <= 0 || f >= 1) return;
             items.push({ y: tp.y + 1, fn: function () {
               var dir = tp.x < 960 ? -1 : 1, e = C.ease(f), x = lerp(tp.x, dir < 0 ? -100 : 2020, e), y = lerp(tp.y, tp.y + 90, e), o = C.outfitFor(firstLeave + q + 3);
               fig(x, y, tp.h, 'stand', o, dir < 0, q, CL(F0 - firstLeave - q) * (1 - C.prog(f, 0.85, 1)), t, dur); drawBox(ctx, x + dir * 8, y - tp.h * 0.4, 34);
@@ -442,20 +538,56 @@
         };
         SET.draw(ctx, cfg, t, dur);
         if (cutRoad) {
-          var tp = C.prog(t, 3, 4.2), fo = fade(t, 3, 12.6, 0.4, 0.6);
-          if (tp > 0 && fo > 0) { var fee = Agamoto.at(road, year).fees, ty = lerp(120, 205, C.back(tp)); ctx.save(); ctx.globalAlpha *= fo; ctx.strokeStyle = P.inkSoft; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1350, 0); ctx.lineTo(1350, ty - 30); ctx.stroke();
+          var tp = C.prog(t, 2.2, 3.2);
+          if (tp > 0) { var fee = Agamoto.at(road, 2028).fees, ty = lerp(120, 205, C.back(tp)); ctx.save(); ctx.strokeStyle = P.inkSoft; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1350, 0); ctx.lineTo(1350, ty - 30); ctx.stroke();
             ctx.translate(1350, ty); ctx.rotate(0.05 * C.amb(t, dur, 1)); C.paper(C.torn(-52, -30, 104, 70, 71, 2), P.mustard, { lift: 5 }); C.label('Fees ↓', 0, -12, 20, P.ink, 'center', 700); C.label('₹' + (Math.round(fee / 500) * 500).toLocaleString('en-IN'), 0, 14, 28, P.ink, 'center', 800); ctx.restore(); }
         } else {
-          var mp = C.prog(t, 5.5, 6.6); if (mp > 0 && t < 10.5) { ctx.save(); ctx.globalAlpha *= fade(t, 5.5, 10.5, 0.3, 0.5); C.callout('Mentors · small groups', 1000, 500, 1000, 700, mp, { size: 30, bg: P.mustard }); ctx.restore(); }
+          var mp = C.prog(t, 3.6, 4.6); if (mp > 0) { C.callout(road.c1 === 'ban' ? 'Mentors · no screens' : 'Mentors · small groups', 1000, 500, 1000, 700, mp, { size: 30, bg: P.mustard }); }
         }
       });
-      var noAI = road.c1 === 'ban';
-      if (cutRoad) { cap(ctx, noAI ? 'Fewer teachers. Fees drop to fight the free apps.' : 'AI explains, so fewer teachers. Lower fees.', [], t, 1.0, 4.4); cap(ctx, 'The boxes go out; the rooms *thin*.', [], t, 5.0, 8.4); }
-      else { cap(ctx, noAI ? 'No AI in class. Teachers become *mentors*.' : 'AI explains. Teachers become *mentors*.', [], t, 1.0, 4.6); cap(ctx, 'Small groups. Parents who call back.', [], t, 5.2, 8.4); }
-      luckOverlay(ctx, t, road);
+      var cp = CAP27[road.id] || CAP27['build-retrain'];
+      cap(ctx, cp[0], [], t, 0.9, 3.9); cap(ctx, cp[1], [], t, 4.1, 7.4);
     } };
   }
-  ['ban-cut', 'ban-retrain', 'build-cut', 'build-retrain'].forEach(function (r) { CLIPS['c2-' + r] = c2(r); });
+  ['ban-cut', 'ban-retrain', 'build-cut', 'build-retrain'].forEach(function (r) { CLIPS['class27-' + r] = class27(r); });
+
+  /* ---------- sound events (sound.js → groove.js): one sound per visible action ---------- */
+  // the hook and the close-ups show only the year chip; the dashboard returns in the classroom (and at the wait-1 join)
+  CLIPS.prologue.hud = function (t) { return t < 2.5 || (t >= 6.25 && t < 11.25) ? 'year' : 'full'; };
+  CLIPS.prologue.events = function () {
+    var ev = [[0.12, 'pop'], [0.32, 'swish']];
+    for (var i = 0; i < 6; i++) ev.push([0.3 + i * 0.1, 'click']);                          // typing the question
+    ev.push([0.85, 'pop'], [1.1, 'popLow', 1], [3 * B - 0.45, 'whooshIn'], [3 * B, 'clank'], [2.5 - 0.18, 'whoosh']);   // FREE slams on beat 3
+    for (var j = 0; j < 8; j++) ev.push([2.7 + j * 0.34, 'step']);                          // the room fills
+    ev.push([2.8, 'pop'], [2.95, 'pop']);
+    for (var k = 0; k < 6; k++) ev.push([4.45 + k * 0.2, 'blip', k]);                       // phones light up
+    ev.push([6.25, 'swish'], [11 * B, 'boing'], [7.0, 'pop'], [8.75, 'swish'], [9.2, 'popLow', 0], [17 * B - 0.45, 'whooshIn'], [17 * B, 'clank'], [11.25, 'swish']);
+    return ev;
+  };
+  CLIPS['c1-build'].hud = function (t) { return t >= 18 * B && t < 21 * B ? 'year' : 'full'; };
+  CLIPS['c1-ban'].hud = CLIPS['c1-build'].hud;
+  CLIPS['c1-build'].events = function () {
+    var ev = [[0.62, 'clonk'], [2.5, 'swish']];
+    for (var i = 0; i < 5; i++) ev.push([2.7 + i * 0.32, 'blip', i]);                       // tablets replace phones
+    ev.push([3.9, 'switch'], [7.2, 'popLow', 0], [7.45, 'popLow', 1], [7.7, 'popLow', 2], [7.85, 'pop'], [18 * B, 'swish'], [19 * B, 'boing'], [19 * B - 0.45, 'whooshIn'], [19 * B + 0.02, 'clank'], [21 * B, 'swish']);
+    return ev;
+  };
+  CLIPS['c1-ban'].events = function () {
+    var ev = [[0.62, 'clonk'], [1.8, 'swish']];
+    for (var k = 0; k < 14; k++) { var rank = (k * 3) % 40, s0 = 2 + (rank % 13) / 13 * 3.4; ev.push([s0 + 0.78, 'drip']); }   // phones land in the basket
+    ev.push([4.95, 'whooshIn'], [5.6, 'clank']);                                             // NO AI stamp: riser peaks on the slam
+    for (var q = 0; q < 6; q++) ev.push([7.6 + q * 0.5, 'step']);                            // a few families walk out
+    ev.push([18 * B, 'swish'], [19 * B - 0.45, 'whooshIn'], [19 * B, 'clank'], [21 * B, 'swish']);
+    return ev;
+  };
+  ['ban-cut', 'ban-retrain', 'build-cut', 'build-retrain'].forEach(function (r) {
+    CLIPS['class27-' + r].events = function (road) {
+      var ev = [[0.62, 'clonk']];
+      if (road.c2 === 'cut') { ev.push([2.4, 'swish'], [2.55, 'pop']); for (var i = 0; i < 6; i++) ev.push([2.2 + i * 0.45, 'step']); }
+      else { ev.push([3.0, 'swish']); for (var j = 0; j < 4; j++) ev.push([1.9 + j * 0.5, 'zip', j]); ev.push([3.75, 'pop']); }
+      return ev;
+    };
+  });
 
   /* ---------- states ---------- */
   SCENES.startState = function (id, road) {
@@ -470,7 +602,7 @@
     if (id === 'prologue' || id === 'wait-1') return { cam: REST, year: 2026, shot: 'REST', cards: [] };
     if (/^c1-/.test(id)) return { cam: REST, year: 2027, shot: 'REST', cards: [id.slice(3)] };
     if (id === 'wait-2') return { cam: REST, year: 2027, shot: 'REST', cards: [c1] };
-    if (/^c2-/.test(id)) { var p = id.slice(3).split('-'); return { cam: REST, year: 2030, shot: 'REST', cards: [p[0], p[1]] }; }
+    if (/^class27-/.test(id)) { var p = id.slice(8).split('-'); return { cam: REST, year: 2027, shot: 'CLASS27', cards: [p[0], p[1]] }; }
     return { cam: REST, year: 2026, shot: 'REST', cards: [] };
   };
 })(this);
