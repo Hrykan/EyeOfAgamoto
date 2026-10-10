@@ -75,10 +75,13 @@
     if (pose === 'sit') {
       // legs + chair-less seated silhouette
       c.fillStyle = outfit.legs || C.PALETTE.inkSoft;
-      c.beginPath(); c.moveTo(-10, -2); c.quadraticCurveTo(4, -6, 22, -4); c.quadraticCurveTo(26, 14, 24, 30); c.lineTo(16, 30); c.quadraticCurveTo(15, 12, 10, 6); c.quadraticCurveTo(-4, 8, -12, 6); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(-12, -4); c.bezierCurveTo(0, -9, 16, -8, 24, -3); c.bezierCurveTo(28, 2, 27, 18, 27, 32); c.quadraticCurveTo(25, 35, 18, 34); c.bezierCurveTo(19, 22, 18, 10, 15, 6); c.bezierCurveTo(4, 8, -6, 8, -13, 5); c.closePath(); c.fill();
+      c.fillStyle = C.PALETTE.wood; c.beginPath(); if (c.roundRect) c.roundRect(-16, 4, 26, 5, 2); else c.rect(-16, 4, 26, 5); c.fill(); c.fillRect(-12, 8, 3, 26); c.fillRect(5, 8, 3, 26);
       c.fillStyle = body;
       c.beginPath(); c.moveTo(-14, 2); c.bezierCurveTo(-16, -22, -12, -40 + breath, 0, -42 + breath); c.bezierCurveTo(12, -40 + breath, 14, -22, 12, 2); c.closePath(); c.fill();
-      head(0, -50 + breath, skin, hair, outfit);
+      c.strokeStyle = body; c.lineCap = 'round'; c.lineWidth = 7; c.beginPath(); c.moveTo(8, -32 + breath); c.quadraticCurveTo(16, -18, 28, -16); c.stroke();
+      c.fillStyle = skin; c.beginPath(); c.arc(29, -16, 3.6, 0, 6.283); c.fill();
+      head(2, -51 + breath, skin, hair, outfit);
     } else {
       var lx = pose === 'lean-in-to-group' ? 6 : 0;
       c.fillStyle = outfit.legs || C.PALETTE.inkSoft;
