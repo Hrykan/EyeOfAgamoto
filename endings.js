@@ -228,9 +228,9 @@
     if (t >= 9.8) caption(c, info.line, C.prog(t, 9.95, 11.4), 850, 13);
     // stamp with counting numbers
     if (t >= 7.4) {
-      var m = /([\d,]+)\s*STUDENTS[^\d]*(\d+)\s*OF\s*10/i.exec(road.stamp || ''), n = m ? parseInt(m[1].replace(/,/g, ''), 10) : road.counters[2036].students, fut = m ? +m[2] : (road.endings[id] || 0);
+      var m = /([\d,]+)\s*STUDENTS[^\d]*(\d+)\s*OF\s*(\d+)/i.exec(road.stamp || ''), n = m ? parseInt(m[1].replace(/,/g, ''), 10) : road.counters[2036].students, fut = m ? +m[2] : (road.endings[id] || 0), total = m ? +m[3] : (road.n || 10);
       var txt = '≈ ' + Math.round(n * C.easeOut(C.prog(t, 7.4, 8.2))).toLocaleString('en-IN') + ' STUDENTS';
-      if (t >= 8.2) txt += ' · ' + Math.round(fut * C.easeOut(C.prog(t, 8.2, 8.7))) + ' OF 10 FUTURES';
+      if (t >= 8.2) txt += ' · ' + Math.round(fut * C.easeOut(C.prog(t, 8.2, 8.7))) + ' OF ' + total + ' FUTURES';
       C.stamp(txt, 960, 215, C.prog(t, 7.4, 8.0), { color: STAMPCOL[id], size: 60, rot: -3 });
     }
     // flash

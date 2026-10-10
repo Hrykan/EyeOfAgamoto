@@ -5,7 +5,8 @@
   "founder": "Sunanda Joshi",
   "about": "A coaching institute in Pune for classes 9–12 and entrance exams, founded in 2009 by Sunanda Joshi, a former physics teacher.",
   "fictional": true,
-  "seed": 56,
+  "seed": 125,
+  "futures": 100,
   "measures": {
     "students": {
       "label": "Students",

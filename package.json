@@ -1,0 +1,8 @@
+{
+  "name": "eye-of-agamoto",
+  "private": true,
+  "description": "Eye of Agamoto · Vidya Classes: a board rehearses a decision before taking it.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0"
+  }
+}
