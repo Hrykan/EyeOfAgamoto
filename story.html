@@ -143,7 +143,7 @@
   // o: {agenda, year, cards(r), age(tl), push: {at, to(r)}, pull: {from(r)}, cap}
   function segBoard(len, o) {
     return { len: len, year: function () { return o.year; },
-      events: function () { var ev = []; if (o.pull) ev.push([0.05, 'whooshOut']); if (o.push) ev.push([o.push.at - 0.2, 'whooshIn']); if (o.cards && o.age) ev.push([0.62, 'clonk']); return ev; },
+      events: function () { var ev = []; if (o.pull) ev.push([0.05, 'whooshOut'], [0.66, 'clack']); if (o.push) ev.push([o.push.at - 0.2, 'whooshIn']); if (o.cards && o.age) ev.push([0.62, 'clonk']); return ev; },
       draw: function (c, tl, r) {
       var cfg = { road: r, year: o.year, agenda: o.agenda, cards: o.cards ? o.cards(r) : [], cardAge: o.age ? o.age(tl) : null };
       var f = 0, img = null, a = 0;
@@ -169,7 +169,7 @@
     } };
   }
   function segFlash(len, from) {
-    return { len: len, year: function () { return 2030; }, events: function () { return [[0, 'ding']]; }, draw: function (c, tl, r) { c.drawImage(from(r), 0, 0, 1920, 1080); C.use(c); C.flash(0.95 * tl / len); } };
+    return { len: len, year: function () { return 2034; }, hud: function () { return 'year'; }, events: function () { return [[0, 'ding']]; }, draw: function (c, tl, r) { c.drawImage(from(r), 0, 0, 1920, 1080); C.use(c); C.flash(0.95 * tl / len); } };
   }
   function shot(id, segs) { var d = 0; segs.forEach(function (sg) { sg.t0 = d; d += sg.len; }); SHOTS[id] = { segs: segs, dur: Math.round(d * 1000) / 1000 }; }
   // on the 96 bpm grid: pushes and pulls are 4 beats, the batch 12 (story v3: the places replace the generic home scenes)

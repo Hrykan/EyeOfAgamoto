@@ -1,5 +1,9 @@
 # Story bible v2 — Vidya Classes across many places
 
+> **Superseded in part (v3):** durations and craft are in `docs/animotion-upgrade.md` (places 6.25 s, bedroom 8.75 s,
+> beat grid, collage look, sound). The places now sit inside story.html's board-view shots (see CONTRACT.md "Story v3").
+> The 'smaller' and lean office captions were rewritten to match the 100-future numbers.
+
 The first version told 2027–2036 through one classroom shot and ticking counters. v2 tells it through **people in
 visually different places**. Every road (`ban-cut`, `ban-retrain`, `build-cut`, `build-retrain`) visits the same
 places, but what happens there splits by the road and its luck.

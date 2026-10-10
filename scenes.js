@@ -561,7 +561,7 @@
     for (var j = 0; j < 8; j++) ev.push([2.7 + j * 0.34, 'step']);                          // the room fills
     ev.push([2.8, 'pop'], [2.95, 'pop']);
     for (var k = 0; k < 6; k++) ev.push([4.45 + k * 0.2, 'blip', k]);                       // phones light up
-    ev.push([6.25, 'swish'], [11 * B, 'boing'], [7.0, 'pop'], [8.75, 'swish'], [9.2, 'popLow', 0], [17 * B - 0.45, 'whooshIn'], [17 * B, 'clank'], [11.25, 'swish']);
+    ev.push([6.25, 'swish'], [6.27, 'clack'], [11 * B, 'pop'], [7.0, 'pop'], [8.75, 'swish'], [8.77, 'clack'], [9.2, 'popLow', 0], [17 * B - 0.45, 'whooshIn'], [17 * B, 'clank'], [11.25, 'swish'], [11.27, 'clack']);
     return ev;
   };
   CLIPS['c1-build'].hud = function (t) { return t >= 18 * B && t < 21 * B ? 'year' : 'full'; };
@@ -569,7 +569,7 @@
   CLIPS['c1-build'].events = function () {
     var ev = [[0.62, 'clonk'], [2.5, 'swish']];
     for (var i = 0; i < 5; i++) ev.push([2.7 + i * 0.32, 'blip', i]);                       // tablets replace phones
-    ev.push([3.9, 'switch'], [7.2, 'popLow', 0], [7.45, 'popLow', 1], [7.7, 'popLow', 2], [7.85, 'pop'], [18 * B, 'swish'], [19 * B, 'boing'], [19 * B - 0.45, 'whooshIn'], [19 * B + 0.02, 'clank'], [21 * B, 'swish']);
+    ev.push([3.9, 'switch'], [7.2, 'popLow', 0], [7.45, 'popLow', 1], [7.7, 'popLow', 2], [7.85, 'pop'], [18 * B, 'swish'], [18 * B + 0.02, 'clack'], [19 * B, 'pop'], [19 * B - 0.45, 'whooshIn'], [19 * B + 0.02, 'clank'], [21 * B, 'swish'], [21 * B + 0.02, 'clack']);
     return ev;
   };
   CLIPS['c1-ban'].events = function () {
@@ -577,7 +577,7 @@
     for (var k = 0; k < 14; k++) { var rank = (k * 3) % 40, s0 = 2 + (rank % 13) / 13 * 3.4; ev.push([s0 + 0.78, 'drip']); }   // phones land in the basket
     ev.push([4.95, 'whooshIn'], [5.6, 'clank']);                                             // NO AI stamp: riser peaks on the slam
     for (var q = 0; q < 6; q++) ev.push([7.6 + q * 0.5, 'step']);                            // a few families walk out
-    ev.push([18 * B, 'swish'], [19 * B - 0.45, 'whooshIn'], [19 * B, 'clank'], [21 * B, 'swish']);
+    ev.push([18 * B, 'swish'], [18 * B + 0.02, 'clack'], [19 * B - 0.45, 'whooshIn'], [19 * B, 'clank'], [21 * B, 'swish'], [21 * B + 0.02, 'clack']);
     return ev;
   };
   ['ban-cut', 'ban-retrain', 'build-cut', 'build-retrain'].forEach(function (r) {

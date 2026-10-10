@@ -163,8 +163,13 @@
   var BATCH = ['9-A', '9-B', '10-A', '10-B', '11-A', '11-B', '12-A', '12-B', 'JEE', 'NEET', 'FOUND.', '6 AM'];
   var BLANK = { smaller: [1, 2, 5, 7, 8, 11], empty: [0, 1, 2, 3, 6, 9, 10] };
   // the batch cards are countable objects: they spring in, and the blank ones peel off (tOff = time the emptying starts)
-  function chartPiece(c, t, E, x, y, w, h, t0, tOff) {
-    var blank = BLANK[E] || [];
+  function blankFor(E, road) { // empty: the wall empties in step with the 2034 student count (third-floor row first)
+    if (E !== 'empty' || !road) return BLANK[E] || [];
+    var n = cl(Math.round(12 * (1 - Agamoto.at(road, 2034).students / Agamoto.at(road, 2026).students)), 4, 8);
+    return [0, 1, 2, 3, 6, 9, 10, 5, 7].slice(0, n);
+  }
+  function chartPiece(c, t, E, x, y, w, h, t0, tOff, blank0) {
+    var blank = blank0 || BLANK[E] || [];
     C.paperPiece(C.tornRect2(x, y, w, h, 401, 4), '#8c6340', { dots: '#280e04', dotA: 0.22, shadow: false });
     C.paperPiece(C.tornRect2(x + 20, y - 20, 330, 48, 402, 2), K.cream, { shadow: false }); txt('Batches · 2034–35', x + 185, y + 3, 28, K.ink, 'center', 800);
     var rows = 3, cols = 4, pad = 20, top = 52, gx = 14, gy = 12, cw = (w - pad * 2 - (cols - 1) * gx) / cols, ch = (h - top - pad - (rows - 1) * gy) / rows, cc = [P.teal, P.mustard, P.coral, '#4b6fa8'], i, j;
@@ -306,14 +311,14 @@
         pc(536, 76, 540, 370, function (cc) { mentorWall(cc, k12, 556, 104, 500, 310, 0.1); });
         pc(1170, 66, 650, 340, function (cc) { chartPiece(cc, k12, E, 1190, 96, 610, 290, 0.3, null); });
       } else if (E === 'lean') {
-        pc(580, 100, 480, 340, function (cc) { framePiece(cc, 610, 130, 420, 270, function (x, y, w, h) { staffPhoto(cc, x, y, w, h, [3, 8, 14, 16, 5, 11, 18, 12], k12, 3 * BEAT + 0.15); }, 441); });
+        pc(580, 100, 480, 340, function (cc) { framePiece(cc, 610, 130, 420, 270, function (x, y, w, h) { staffPhoto(cc, x, y, w, h, [8, 14], k12, 3 * BEAT + 0.15); }, 441); });
         pc(650, 418, 300, 40, function (cc) { C.paperPiece(C.tornRect2(690, 416, 260, 34, 442, 1), K.cream, { shadow: false }); txt('Vidya faculty · 2026', 820, 434, 22, K.ink, 'center', 800); });
         pc(1180, 80, 640, 330, function (cc) { screenPiece(cc, k12, road, 1210, 110, 580, 270, 3 * BEAT + 0.1); });
       } else if (E === 'smaller') {
         pc(690, 120, 340, 280, function (cc) { framePiece(cc, 720, 150, 280, 210, function (x, y, w, h) { photo2009(cc, x, y, w, h); }, 451); });
         pc(1290, 66, 540, 330, function (cc) { chartPiece(cc, k12, E, 1320, 96, 480, 270, 0.2, 3 * BEAT + 0.15); });
       } else {
-        pc(536, 76, 540, 340, function (cc) { chartPiece(cc, k12, E, 556, 104, 480, 280, 0.1, 0.8); });
+        pc(536, 76, 540, 340, function (cc) { chartPiece(cc, k12, E, 556, 104, 480, 280, 0.1, 0.8, blankFor(E, road)); });
         if (S.photoOn && !S.held) { var Fp = photoPos(t); pc(Fp.x - 150, Fp.y - 120, 300, 240, function (cc) { cc.save(); cc.translate(Fp.x, Fp.y); cc.rotate(Fp.r); cc.translate(-Fp.x, -Fp.y); framePiece(cc, Fp.x - 120, Fp.y - 90, 240, 180, function (x, y, w, h) { photo2009(cc, x, y, w, h); }, 453); cc.restore(); }); }
         else C.paperPiece(C.tornRect2(1290, 170, 240, 180, 452, 2), 'rgba(20,80,92,0.55)', { shadow: false });
       }
@@ -503,7 +508,7 @@
 
   /* ---------- LEAN: an analytics wall, a faculty photo that has faded, alone ---------- */
   DIR.lean = {
-    caps: ['2034. Lowest fees in Pune, and the rooms are *full*.', 'Most of the people in this photo are *gone*.'],
+    caps: ['2034. Lowest fees in Pune, and the rooms are *full*.', 'Fees fell; each teacher\'s class is *bigger*.'],
     shots: [{ a: 0, b: B(3), k: 'wide' }, { a: B(3), b: B(5), k: 'screen' }, { a: B(5), b: B(7), k: 'photo' }, { a: B(7), b: B(10), k: 'face' }],
     cam: function (sh, t) {
       if (sh.k === 'wide') return camAt(t, sh, [1000, 545, 1.0], [1070, 540, 1.1]);
@@ -598,7 +603,7 @@
     return function () { standingSticker(t, { x: 1405, y: 900, h: 640, flip: true }, { face: face, R: R, L: [1385, 720], look: [1, 0.2], tilt: 0.02, lean: 0.03 + 0.05 * up1, t: t }); };
   }
   DIR.smaller = {
-    caps: ['2034. Loyal families *stay*.', 'Sunanda switches off the lights in two empty *rooms*.'],
+    caps: ['2034. Loyal families *stay*.', 'Long days: more teachers than ever, results still *behind*.'],
     shots: [{ a: 0, b: B(3), k: 'wide' }, { a: B(3), b: B(5), k: 'chart' }, { a: B(5), b: B(7), k: 'corridor' }, { a: B(7), b: B(10), k: 'cface' }],
     cam: function (sh, t) {
       if (sh.k === 'wide') return camAt(t, sh, [1120, 540, 1.0], [1180, 520, 1.1]);
@@ -734,6 +739,6 @@
     c.restore();
   }, events: function (road) { return (DIR[endOf(road)].events || []).slice(); } };
   DIR.trusted.insert = insertTrusted; DIR.trusted.face = faceTrusted;
-  DIR.trusted.events = [[0.12, 'zip', 1], [0.34, 'pop'], [B(1) - 0.05, 'pop'], [0.8, 'notify'], [B(3) - 0.03, 'swish'], [B(3), 'pop'], [B(3) + 0.3, 'popLow', 1], [B(3) + 0.7, 'notify'], [B(4) - 0.45, 'whooshIn'], [B(4), 'clank'], [B(5) - 0.03, 'swish'], [B(5), 'pop'], [B(6), 'notify'], [B(7) - 0.02, 'boing'], [B(8), 'swish'], [B(8) + 0.45, 'click'], [B(9), 'switch']];
+  DIR.trusted.events = [[0.12, 'zip', 1], [0.34, 'pop'], [B(1) - 0.05, 'pop'], [0.8, 'notify'], [B(3) - 0.03, 'swish'], [B(3), 'pop'], [B(3) + 0.3, 'popLow', 1], [B(3) + 0.7, 'notify'], [B(4) - 0.45, 'whooshIn'], [B(4), 'clank'], [B(5) - 0.03, 'swish'], [B(5), 'pop'], [B(6), 'notify'], [B(7) - 0.02, 'pop'], [B(8), 'swish'], [B(8) + 0.45, 'click'], [B(9), 'switch']];
   DIR.trusted.stamps = [{ at: B(4), text: 'Waiting list', x: 1010, y: 480, size: 120, col: K.maroon, rot: -0.08, plate: [700, 190] }];
 })(typeof window !== 'undefined' ? window : globalThis);

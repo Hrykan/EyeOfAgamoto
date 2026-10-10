@@ -49,8 +49,9 @@
       events: function (road) {
         var ev = [];
         segs.forEach(function (g, i) {
-          var k = src(g); if (i && g.tr === 'tear') ev.push([g.start - 0.2, 'rip']); else if (i && g.tr === 'push') ev.push([g.start - 0.18, 'whoosh']); else if (i) ev.push([g.start, 'swish']);
-          var list = []; try { list = k && k.events ? (typeof k.events === 'function' ? k.events(road) : k.events) : []; } catch (e) { console.error(e); }
+          var k = src(g), list = []; try { list = k && k.events ? (typeof k.events === 'function' ? k.events(road) : k.events) : []; } catch (e) { console.error(e); }
+          var ownsCut = (list || []).some(function (e) { return Math.abs(e[0] - g.t0) < 0.15; });
+          if (i && g.tr === 'tear') ev.push([g.start - 0.2, 'rip']); else if (i && g.tr === 'push') ev.push([g.start - 0.18, 'whoosh']); else if (i && !ownsCut) ev.push([g.start, 'swish']);
           (list || []).forEach(function (e) { var tt = g.start + e[0] - g.t0; if (e[0] >= g.t0 - 0.01 && e[0] < g.t0 + g.dur) ev.push([tt, e[1], e[2]].filter(function (x) { return x !== undefined; })); });
         });
         return ev;

@@ -231,15 +231,15 @@
       "id": "smaller",
       "tone": "steady",
       "label": "Smaller, still standing",
-      "line": "Loyal families stayed. Half the rooms are empty.",
+      "line": "Loyal families stayed. Batches got smaller; results never caught up.",
       "when": {},
       "glimpse": [
         "Monday morning, 2036. The loyal *families* still come.",
-        "Monday morning, 2036. Half the rooms are *quiet*."
+        "Monday morning, 2036. Smaller batches, middling *results*."
       ],
       "callouts": [
         "Loyal families stayed",
-        "Half-empty rooms"
+        "Smaller batches"
       ]
     }
   ]
