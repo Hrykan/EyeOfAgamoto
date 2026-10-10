@@ -1,0 +1,217 @@
+{
+  "name": "Vidya Classes",
+  "city": "Pune",
+  "founded": 2009,
+  "founder": "Sunanda Joshi",
+  "about": "A coaching institute in Pune for classes 9–12 and entrance exams, founded in 2009 by Sunanda Joshi, a former physics teacher.",
+  "fictional": true,
+  "seed": 56,
+  "measures": {
+    "students": {
+      "label": "Students",
+      "start": 50,
+      "scale": 40,
+      "unit": "students"
+    },
+    "teachers": {
+      "label": "Teachers",
+      "start": 60,
+      "scale": 1.33,
+      "unit": "teachers"
+    },
+    "results": {
+      "label": "Results",
+      "start": 55
+    },
+    "affordability": {
+      "label": "Affordability",
+      "start": 50,
+      "fee": {
+        "base": 90000,
+        "perPoint": 600
+      }
+    }
+  },
+  "decisions": [
+    {
+      "id": "c1",
+      "year": 2026,
+      "question": "What do we do about AI tutors?",
+      "options": [
+        {
+          "id": "ban",
+          "label": "Ban AI in class",
+          "consequence": "Keep the old way.",
+          "leans": {
+            "students": -1,
+            "results": -0.5
+          }
+        },
+        {
+          "id": "build",
+          "label": "Build AI into every class",
+          "consequence": "Students practise with AI; teachers see where each one struggles.",
+          "leans": {
+            "results": 1.5,
+            "affordability": 0.5,
+            "students": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "year": 2027,
+      "question": "What happens to the teachers?",
+      "options": [
+        {
+          "id": "cut",
+          "label": "Cut staff to cut fees",
+          "consequence": "Fewer teachers, lower fees.",
+          "leans": {
+            "teachers": -1.5,
+            "affordability": 1,
+            "results": -1
+          }
+        },
+        {
+          "id": "retrain",
+          "label": "Retrain teachers as mentors",
+          "consequence": "AI explains; teachers mentor small groups and talk to parents.",
+          "leans": {
+            "teachers": 0.3,
+            "results": 1.2,
+            "students": 0.8,
+            "affordability": -0.3
+          }
+        }
+      ]
+    }
+  ],
+  "luck": [
+    {
+      "id": "viral",
+      "year": 2028,
+      "p": 0.3,
+      "sign": "-",
+      "headline": "A free AI tutor app goes viral",
+      "effects": {
+        "students": -12,
+        "affordability": -4
+      }
+    },
+    {
+      "id": "collapse",
+      "year": 2029,
+      "p": 0.25,
+      "sign": "+",
+      "boostedBy": "retrain",
+      "headline": "A big coaching chain collapses; parents look for a trusted name",
+      "effects": {
+        "students": 14,
+        "results": 3
+      }
+    },
+    {
+      "id": "topper",
+      "year": 2030,
+      "p": 0.25,
+      "sign": "+",
+      "boostedBy": "build",
+      "headline": "A Vidya student tops the state exam",
+      "effects": {
+        "students": 9,
+        "results": 10
+      }
+    }
+  ],
+  "endings": [
+    {
+      "id": "trusted",
+      "tone": "good",
+      "label": "Pune's most trusted",
+      "line": "Mentors and AI, side by side. Every classroom full.",
+      "when": {
+        "students": [
+          58,
+          100
+        ],
+        "teachers": [
+          52,
+          100
+        ],
+        "results": [
+          62,
+          100
+        ]
+      },
+      "glimpse": [
+        "Monday morning, 2036. Every *desk* is taken before seven.",
+        "Monday morning, 2036. Sunanda's mentors know each student by *name*."
+      ],
+      "callouts": [
+        "AI explains · mentors guide",
+        "Parents queue to enrol"
+      ]
+    },
+    {
+      "id": "lean",
+      "tone": "good",
+      "label": "Lean and growing",
+      "line": "AI does the explaining. Fewer teachers, more students.",
+      "when": {
+        "students": [
+          52,
+          100
+        ],
+        "teachers": [
+          0,
+          52
+        ]
+      },
+      "glimpse": [
+        "Monday morning, 2036. One teacher runs a room of *sixty*.",
+        "Monday morning, 2036. Fees are the *lowest* in Pune."
+      ],
+      "callouts": [
+        "One screen, sixty students",
+        "Fees down, rooms full"
+      ]
+    },
+    {
+      "id": "empty",
+      "tone": "hard",
+      "label": "Empty classrooms",
+      "line": "The rooms emptied. Sunanda starts again, with three students at dawn.",
+      "when": {
+        "students": [
+          0,
+          38
+        ]
+      },
+      "glimpse": [
+        "Monday morning, 2036. Three students wait in the *dawn* light.",
+        "Monday morning, 2036. Sunanda picks up the chalk and starts *again*."
+      ],
+      "callouts": [
+        "Three students at dawn",
+        "She starts again"
+      ]
+    },
+    {
+      "id": "smaller",
+      "tone": "steady",
+      "label": "Smaller, still standing",
+      "line": "Loyal families stayed. Half the rooms are empty.",
+      "when": {},
+      "glimpse": [
+        "Monday morning, 2036. The loyal *families* still come.",
+        "Monday morning, 2036. Half the rooms are *quiet*."
+      ],
+      "callouts": [
+        "Loyal families stayed",
+        "Half-empty rooms"
+      ]
+    }
+  ]
+}
