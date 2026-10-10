@@ -61,9 +61,9 @@
       C.label(it[1], x, 990, 34, C.dirColor(it[2], it[3]), 'left', 800);
     });
     // trust line
-    c.font = 'italic 26px ' + C.FONTS.serif; c.fillStyle = 'rgba(251,245,232,0.92)'; c.textAlign = 'right'; c.textBaseline = 'middle';
-    c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 6;
-    c.fillText('10 futures · same luck · a fictional company · a rehearsal, not a prediction', 1892, 1050);
+    c.font = 'italic 25px ' + C.FONTS.serif; var tl = '10 futures · same luck · a fictional company · a rehearsal, not a prediction', tw = c.measureText(tl).width;
+    c.fillStyle = 'rgba(31,27,24,0.78)'; c.fillRect(1892 - tw - 24, 1030, tw + 40, 40);
+    c.fillStyle = '#f4ead7'; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(tl, 1898, 1051);
     c.restore();
   }
   function frame(id, t, roadId) {
@@ -74,7 +74,7 @@
     try { if (CLIPS[id]) { ctx.save(); CLIPS[id].draw(ctx, t, road); ctx.restore(); } else placeholder(ctx, id, t, road); }
     catch (e) { ctx.restore && ctx.restore(); placeholder(ctx, id + ' (error: ' + e.message + ')', t, road); console.error(e); }
     ctx.setTransform(S, 0, 0, S, 0, 0); C.use(ctx);
-    C.vignette(0.42); C.grain(t, 0.45); hud(ctx, id, t, road);
+    C.vignette(0.42); if (!Q.get('nograin')) C.grain(t, 0.45); hud(ctx, id, t, road);
   }
   var ready = fetch('company.json').then(function (r) { return r.json(); }).then(function (co) { Kal.init(co); return document.fonts.load('italic 40px "Instrument Serif"'); })
     .then(function () { return Promise.all([document.fonts.load('700 30px "Barlow Condensed"'), document.fonts.load('800 30px "Barlow Condensed"'), document.fonts.load('500 30px "Barlow Condensed"'), document.fonts.load('40px "Tiro Devanagari Hindi"', 'कल')]); });
