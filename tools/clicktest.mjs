@@ -6,7 +6,7 @@ const srv = http.createServer((q, s) => { const p = path.join(root, decodeURICom
   if (range) { const [a, b] = range.replace('bytes=', '').split('-'); const st = +a, en = b ? +b : d.length - 1; s.writeHead(206, { 'content-type': ty, 'content-range': `bytes ${st}-${en}/${d.length}`, 'accept-ranges': 'bytes', 'content-length': en - st + 1 }); s.end(d.subarray(st, en + 1)); }
   else { s.writeHead(200, { 'content-type': ty, 'accept-ranges': 'bytes', 'content-length': d.length }); s.end(d); } }); }).listen(0);
 const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 1280, height: 720 } }); const errs = []; pg.on('pageerror', e => errs.push(e.message));
-await pg.goto(`http://localhost:${srv.address().port}/`); await pg.waitForTimeout(1500);
+await pg.goto(`http://localhost:${srv.address().port}/play.html`); await pg.waitForTimeout(1500);
 const seg = () => pg.evaluate(() => PLAY.S.seg && PLAY.S.seg.id), shot = n => pg.screenshot({ path: `${out}/click-${n}.png` });
 const until = (fn, ms = 20000) => pg.waitForFunction(fn, null, { timeout: ms, polling: 100 });
 const steps = []; const ok = async (label, fn) => { try { await fn(); steps.push('PASS  ' + label); } catch (e) { steps.push('FAIL  ' + label + '  (' + e.message.split('\n')[0] + ')'); } };
@@ -24,6 +24,8 @@ await pg.waitForTimeout(1200);
 await ok('+5s then −5s move the clip', async () => { const a = await pg.evaluate(() => document.querySelector('video[style*="z-index: 2"]').currentTime); await ctrl('fwd'); const b2 = await pg.evaluate(() => document.querySelector('video[style*="z-index: 2"]').currentTime); if (!(b2 > a + 3)) throw new Error(`fwd ${a}→${b2}`); await ctrl('back'); });
 await ok('Skip → 2036 film', async () => { await ctrl('skip'); await until(() => PLAY.S.seg.id === 'end-ban-retrain'); });
 await pg.waitForTimeout(1200); await shot('3-2036');
+await ok('Skip → board briefing (what happened, and why)', async () => { await ctrl('skip'); await until(() => PLAY.S.whyOn, 8000); const t = await pg.textContent('#why .why-sum'); if (!/board's two decisions/.test(t)) throw new Error(t); });
+await pg.waitForTimeout(500); await shot('3b-briefing');
 await ok('Skip → What if? map', async () => { await ctrl('skip'); await until(() => PLAY.S.mapOn, 5000); });
 await pg.waitForTimeout(600); await shot('4-map');
 await ok('Menu button → menu screen', async () => { await ctrl('menu'); await until(() => !PLAY.S.started && document.querySelector('#splash').classList.contains('on')); });
