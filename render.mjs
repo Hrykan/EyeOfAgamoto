@@ -82,10 +82,10 @@ async function renderOne(browser, port, id) {
       for (let i = 0; i < n; i++) { dv.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i] * g)) * 32767, true); dv.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i] * g)) * 32767, true); }
       const bytes = new Uint8Array(dv.buffer); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       return btoa(bin);
-    }, [sp.clip, sp.road, dur]);
+    }, [sp.clip, sp.road, n / FPS]);   // exactly the video's length: a longer or shorter track stalls Chrome at the end
     const wav = path.join(OUT, `.${sp.outs[0]}.wav`), muxed = path.join(OUT, `.${sp.outs[0]}.mux.mp4`);
     fs.writeFileSync(wav, Buffer.from(wav64, 'base64'));
-    await new Promise((res, rej) => { const m = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp, '-i', wav, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', '-movflags', '+faststart', muxed], { stdio: 'inherit' }); m.on('close', c => c === 0 ? res() : rej(new Error('mux exit ' + c))); });
+    await new Promise((res, rej) => { const m = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', tmp, '-i', wav, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-af', 'apad', '-t', (n / FPS).toFixed(3), '-movflags', '+faststart', muxed], { stdio: 'inherit' }); m.on('close', c => c === 0 ? res() : rej(new Error('mux exit ' + c))); });
     for (const o of sp.outs) fs.copyFileSync(muxed, path.join(OUT, o + '.mp4'));
     fs.unlinkSync(tmp); fs.unlinkSync(muxed); fs.mkdirSync(path.join(ROOT, 'qc', 'wav'), { recursive: true }); fs.renameSync(wav, path.join(ROOT, 'qc', 'wav', sp.outs[0] + '.wav'));
     console.log(`${sp.outs.join(' + ')}.mp4  ${n} frames  ${((Date.now() - t0) / 1000).toFixed(1)}s${errs.length ? '  (page errors: ' + [...new Set(errs)].slice(0, 3).join(' | ') + ')' : ''}`);
