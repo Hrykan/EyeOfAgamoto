@@ -1,6 +1,6 @@
-# Kal · Vidya Classes
+# Eye of Agamoto · Vidya Classes
 
-**कल** means both *yesterday* and *tomorrow*. Kal lets a room rehearse a decision before making it.
+Eye of Agamoto lets a room rehearse a decision before making it: two choices, 10 futures per road with the same luck, and you see who it affects.
 
 AI tutors now explain any topic, in any language, almost free. That attacks the core of a coaching institute: explanation and drilling. What AI can't easily replace is mentoring, accountability and trust with parents. The futures split on whether the institute moves its people up to that work, or competes with AI on price.
 
@@ -15,7 +15,7 @@ Each of the 4 roads is run as **10 futures with the same luck** (a seeded engine
 
 ## Live link
 
-- Stage player: `play.html` (GitHub Pages: enable Pages for this branch, then open `<pages-url>/play.html`)
+- Stage player: `play.html` — on GitHub Pages: Settings → Pages → Deploy from a branch → `claude/sleepy-faraday-48qv15` / root, then open https://hrykan.github.io/EyeOfAgamoto/play.html
 - Fallback, drawn live: `index.html` (keys 1 / 2 choose, Enter locks, R rewinds)
 - Ultimate fallback: `walkthrough.mp4`
 
