@@ -131,5 +131,5 @@
 
   var api = { init: init, ROADS: ROADS, YEARS: YEARS, simulate: simulate, road: road, compare: compare, at: at,
     future: future, counts: counts, mode: mode, endingOf: endingOf, company: function () { return CO; }, _clear: function () { cache = {}; } };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else { root.Agamoto = api; root.Kal = api; } // Kal alias: temporary, for play.html
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Agamoto = api;
 })(this);

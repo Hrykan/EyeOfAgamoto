@@ -13,7 +13,7 @@
   C.FONTS = {
     serif: '"Instrument Serif", Georgia, serif',          // narration — always italic
     label: '"Barlow Condensed", "Arial Narrow", sans-serif', // labels — always UPPERCASE
-    deva: '"Tiro Devanagari Hindi", serif'               // कल
+    deva: '"Tiro Devanagari Hindi", serif'               // Devanagari text and the ₹ glyph
   };
   C.use = function (ctx) { C.ctx = ctx; return C; };
 
